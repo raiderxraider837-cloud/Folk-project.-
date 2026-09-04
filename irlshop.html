@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>irlshop - Gastar 1 Quintillón</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        irl: {
+                            orange: '#f97316',
+                            deepOrange: '#ea580c',
+                            darkOrange: '#c2410c',
+                            creamBg: '#fbf8f3',
+                            cardBg: '#ffffff',
+                            subtle: '#fff7ed',
+                            dark: '#1f150e'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #ea580c;
+            color: #1c1b1f;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .money-hud {
+            background: rgba(31, 21, 14, 0.94);
+            backdrop-filter: blur(14px);
+        }
+
+        @keyframes flashDrop {
+            0% { color: #fb923c; transform: scale(1.05); }
+            100% { color: #34d399; transform: scale(1); }
+        }
+        .flash-animation {
+            animation: flashDrop 0.35s ease-out;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .curved-cat-container {
+            border-bottom-left-radius: 40px;
+            border-top-left-radius: 40px;
+            border-bottom-right-radius: 40px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex justify-center items-start sm:py-4 sm:px-4 bg-orange-900">
+
+    <div class="w-full max-w-md bg-gradient-to-b from-orange-500 via-orange-600 to-amber-600 min-h-screen sm:min-h-[94vh] sm:rounded-[40px] shadow-2xl relative overflow-hidden flex flex-col border border-orange-400/40">
+
+        <div class="sticky top-0 z-40 money-hud text-white px-4 py-2.5 border-b border-orange-900/60 flex flex-col justify-between shadow-xl">
+            <div class="flex items-center justify-between text-[11px] mb-1">
+                <span class="text-orange-300 font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-gem text-amber-300"></i> Fortuna $1 Quintillón
+                </span>
+                <span id="spent-percentage" class="bg-orange-950/80 text-orange-200 px-2 py-0.5 rounded-md text-[10px] font-mono border border-orange-800">
+                    0.00000% gastado
+                </span>
+            </div>
+            
+            <div class="flex items-center justify-between gap-2">
+                <div>
+                    <span class="text-[9px] text-orange-300/80 block leading-none">Saldo Disponible:</span>
+                    <div id="balance-display" class="text-base sm:text-lg font-black font-mono text-emerald-400 tracking-tight transition-all">
+                        $1,000,000,000,000,000,000
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1.5">
+                    <button onclick="openGamesModal()" class="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-900 font-black text-[10px] px-2.5 py-1.5 rounded-xl shadow transition active:scale-95 flex items-center gap-1">
+                        <i class="fa-solid fa-gamepad text-xs"></i>
+                        <span>Juegos +1T</span>
+                    </button>
+                    <button onclick="openCartModal()" class="relative bg-orange-950/80 hover:bg-orange-900 p-2 rounded-xl text-white transition active:scale-95 border border-orange-800">
+                        <i class="fa-solid fa-cart-shopping text-xs"></i>
+                        <span id="cart-badge" class="absolute -top-1 -right-1 bg-amber-400 text-slate-900 text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center hidden border border-slate-900">
+                            0
+                        </span>
+                    </button>
+                    <button onclick="resetGame()" title="Reiniciar Saldo" class="bg-orange-950/80 hover:bg-orange-900 p-2 rounded-xl text-orange-200 transition active:scale-95 border border-orange-800">
+                        <i class="fa-solid fa-rotate-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="w-full bg-orange-950/90 h-1.5 rounded-full mt-2 overflow-hidden border border-orange-900/50">
+                <div id="progress-bar" class="bg-gradient-to-r from-amber-400 via-orange-400 to-emerald-400 h-full w-0 transition-all duration-300"></div>
+            </div>
+        </div>
+
+        <div class="relative bg-gradient-to-br from-orange-500 to-amber-600 text-white pb-3 pt-2">
+            <div class="px-5 pt-3 flex items-center justify-between z-10 relative">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white">
+                        <i class="fa-solid fa-cat text-sm"></i>
+                    </div>
+                    <span class="font-extrabold text-2xl tracking-tight text-white font-sans">irlshop</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="showToast('Menú de irlshop')" class="text-white hover:text-orange-200 transition">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <button onclick="showToast('Buscar en irlshop')" class="text-white hover:text-orange-200 transition">
+                        <i class="fa-solid fa-magnifying-glass text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hero Section featuring Ginger Cat image from exact screenshot -->
+            <div class="w-full mt-3 px-4 flex justify-between items-center relative">
+                <div class="w-1/2 pr-2">
+                    <h1 class="text-4xl font-black text-white leading-none tracking-tight">irlshop</h1>
+                    <p class="text-xs text-amber-100 font-medium mt-1">Tienda Oficial para Gatos IRL</p>
+                </div>
+                <div class="w-1/2 h-44 sm:h-48 overflow-hidden relative curved-cat-container shadow-2xl border-2 border-white/30">
+                    <img id="hero-cat-img" 
+                         src="https://i.postimg.cc/26KRTVGB/Screenshot-20260904-143746-com-zhiliaoapp-musically-Main-Activity.jpg" 
+                         onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=800&auto=format&fit=crop';" 
+                         alt="Gato Naranja IRL" 
+                         class="w-full h-full object-cover object-center">
+                </div>
+            </div>
+        </div>
+
+        <div class="mx-4 mt-2 z-20 bg-amber-950/80 backdrop-blur-md rounded-2xl p-3 border border-orange-500/40 text-orange-100 text-[10.5px] flex items-start gap-2.5 shadow-lg">
+            <i class="fa-solid fa-shield-cat text-amber-400 text-base shrink-0 mt-0.5"></i>
+            <p class="leading-snug">
+                <strong>Aviso Legal de Monedas Virtuales:</strong> El jugador debe completar juegos para ganar monedas virtuales. Cada juego completado otorga 1 trillón de monedas ficticias. Estas monedas no tienen valor real y no pueden convertirse en dinero real.
+            </p>
+        </div>
+
+        <div class="mt-4 bg-irl-creamBg rounded-t-[36px] p-5 flex-1 shadow-inner flex flex-col border-t border-amber-200/50">
+            
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-extrabold text-lg text-slate-800 tracking-tight flex items-center gap-2">
+                    <span>Productos destacados</span>
+                    <i class="fa-solid fa-arrow-right text-xs text-orange-500"></i>
+                </h2>
+                <div class="flex items-center gap-1 text-[11px]">
+                    <button onclick="setCategory('all')" id="cat-all" class="px-3 py-1 rounded-full bg-orange-500 text-white font-bold transition shadow-sm">Todos</button>
+                    <button onclick="setCategory('irl')" id="cat-irl" class="px-3 py-1 rounded-full bg-white text-slate-600 font-semibold transition hover:bg-orange-100 border border-slate-200">IRL Cat</button>
+                    <button onclick="setCategory('luxury')" id="cat-luxury" class="px-3 py-1 rounded-full bg-white text-slate-600 font-semibold transition hover:bg-orange-100 border border-slate-200">Épicos</button>
+                </div>
+            </div>
+
+            <!-- Product Grid matching irlshop layout -->
+            <div id="product-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3.5 pb-24">
+                <!-- JavaScript will dynamically render product cards here -->
+            </div>
+        </div>
+
+        <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white/95 backdrop-blur-md border-t border-orange-200 py-3 px-5 z-30 sm:rounded-b-[40px] shadow-2xl flex items-center justify-between">
+            <div>
+                <span class="text-[10px] text-slate-400 font-medium block">Total Gastado</span>
+                <span id="bottom-spent-display" class="font-black text-sm font-mono text-orange-600">$0.00</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openGamesModal()" class="bg-amber-400 hover:bg-amber-300 text-slate-900 font-extrabold text-xs px-3 py-2.5 rounded-2xl shadow transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-gamepad text-xs"></i>
+                    <span>+1 Trillón</span>
+                </button>
+                <button onclick="openCartModal()" class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-black text-xs px-4 py-2.5 rounded-2xl shadow-lg transition flex items-center gap-1.5">
+                    <span>Comprar ahora</span>
+                    <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="games-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-900 w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-orange-500/30 transform translate-y-10 transition-transform duration-300 text-white">
+            
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-2xl bg-orange-500 text-white flex items-center justify-center font-black text-sm shadow">
+                        <i class="fa-solid fa-gamepad"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-sm leading-tight text-orange-400 font-sans">Minijuegos irlshop</h3>
+                        <p class="text-[10px] text-slate-400">Gana +1 Trillón de Monedas Ficticias</p>
+                    </div>
+                </div>
+                <button onclick="closeGamesModal()" class="p-1.5 text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Mandatory Legal Notice in Modal -->
+            <div class="bg-orange-500/10 border-b border-orange-500/20 px-4 py-2.5 text-[10.5px] text-orange-200 leading-snug">
+                <strong>Aviso Legal:</strong> El jugador debe completar juegos para ganar monedas virtuales. Cada juego completado otorga 1 trillón de monedas ficticias. Estas monedas no tienen valor real y no pueden convertirse en dinero real.
+            </div>
+
+            <!-- Games Selection Screen -->
+            <div id="games-body" class="p-4 overflow-y-auto flex-1 space-y-3">
+                <div id="game-select-screen" class="space-y-3">
+                    <p class="text-xs text-slate-300 font-semibold">Selecciona un juego para ganar +1 Trillón ficticio:</p>
+                    
+                    <!-- Game 1 -->
+                    <div onclick="startCatTapGame()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-orange-400 rounded-2xl p-3.5 flex items-center justify-between cursor-pointer transition group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-2xl bg-orange-500/20 text-orange-400 flex items-center justify-center text-xl group-hover:scale-110 transition">
+                                🐱
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-xs text-white group-hover:text-orange-300 transition">Atrapa al Gato Naranja IRL</h4>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Toca al gato 10 veces en 10 segundos.</p>
+                            </div>
+                        </div>
+                        <span class="bg-orange-500 text-white font-black text-[10px] px-2.5 py-1 rounded-lg shrink-0">+1 Trillón</span>
+                    </div>
+
+                    <!-- Game 2 -->
+                    <div onclick="startMemoryGame()" class="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-orange-400 rounded-2xl p-3.5 flex items-center justify-between cursor-pointer transition group">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center text-xl group-hover:scale-110 transition">
+                                🥫
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-xs text-white group-hover:text-orange-300 transition">Memoria Snacks IRL</h4>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Encuentra las 4 parejas de snacks y camas.</p>
+                            </div>
+                        </div>
+                        <span class="bg-orange-500 text-white font-black text-[10px] px-2.5 py-1 rounded-lg shrink-0">+1 Trillón</span>
+                    </div>
+                </div>
+
+                <div id="game-play-screen" class="hidden flex flex-col items-center justify-center min-h-[250px] text-center space-y-3">
+                    <!-- Injected via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cart-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl transform translate-y-10 transition-transform duration-300">
+            
+            <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-orange-600 text-white">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-7 h-7 rounded-full bg-amber-400 text-slate-900 flex items-center justify-center font-black text-xs">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-sm leading-tight">Recibo Oficial irlshop</h3>
+                        <p class="text-[10px] text-orange-100">Desglose de compras con tu Quintillón</p>
+                    </div>
+                </div>
+                <button onclick="closeCartModal()" class="p-1.5 text-orange-200 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div id="cart-items-container" class="p-4 overflow-y-auto flex-1 space-y-3 bg-slate-50">
+                <!-- Cart items dynamically rendered -->
+            </div>
+
+            <div class="p-4 bg-white border-t border-slate-200 space-y-3">
+                <div class="space-y-1 text-xs text-slate-800">
+                    <div class="flex justify-between">
+                        <span>Total Gastado:</span>
+                        <span id="cart-total-spent" class="font-black font-mono text-orange-600">$0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Saldo Restante:</span>
+                        <span id="cart-remaining" class="font-black font-mono text-emerald-600">$1,000,000,000,000,000,000</span>
+                    </div>
+                </div>
+
+                <button onclick="copyReceipt()" class="w-full bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white font-extrabold py-3 rounded-2xl text-xs transition flex items-center justify-center space-x-2 shadow-md">
+                    <i class="fa-solid fa-copy"></i>
+                    <span>Copiar Recibo Oficial</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-msg" class="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-full shadow-2xl z-50 flex items-center gap-2 transform -translate-y-12 opacity-0 transition-all duration-300 pointer-events-none border border-orange-500/40">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-orange-400"></i>
+        <span id="toast-text">Notificación</span>
+    </div>
+
+    <script>
+        const INITIAL_BALANCE = 1000000000000000000n; // 1 Quintillion BigInt
+        const ONE_TRILLION = 1000000000000n; // 1 Trillion fictive coins
+        let currentBalance = INITIAL_BALANCE;
+
+        // Products matching exact irlshop image screenshot:
+        // 1. Gato Naranja Peluche 19,99 €
+        // 2. Rscaador patoa 12,50 €
+        // 3. Rscaador para Gatos 12,50 €
+        // 4. Cama Suave Naranja 29,99 €
+        // 5. Cama Suave Naranja 29,99 €
+        // 6. Set Snacks 8,99 €
+        // Plus Epic luxury items to allow spending up to 1 Quintillion!
+        const products = [
+            {
+                id: 'gato-naranja-peluche',
+                name: 'Gato Naranja Peluche',
+                price: 20n,
+                priceDisplay: '19,99 €',
+                category: 'irl',
+                image: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=400&auto=format&fit=crop',
+                count: 0
+            },
+            {
+                id: 'rscaador-patoa',
+                name: 'Rscaador patoa',
+                price: 13n,
+                priceDisplay: '12,50 €',
+                category: 'irl',
+                image: 'https://images.unsplash.com/photo-1545249390-6bdfa286032f?q=80&w=400&auto=format&fit=crop',
+                count: 0
+            },
+            {
+                id: 'rscaador-para-gatos',
+                name: 'Rscaador para Gatos',
+                price: 13n,
+                priceDisplay: '12,50 €',
+                category: 'irl',
+                image: 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?q=80&w=400&auto=format&fit=crop',
+                count: 0
+            },
+            {
+                id: 'cama-suave-naranja-1',
+                name: 'Cama Suave Naranja',
+                price: 30n,
+                priceDisplay: '29,99 €',
+                category: 'irl',
+                image: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?q=80&w=400&auto=format&fit=crop',
+                count: 0
+            },
+            {
+                id: 'cama-suave-naranja-2',
+                name: 'Cama Suave Naranja (Cuadrada)',
+                price: 30n,
+                priceDisplay: '29,99 €',
+                category: 'irl',
+                image: 'https://images.unsplash.com/photo-1574158622682-e40e69881006?q=80&w=400&auto=format&fit=crop',
+                count: 0
+            },
+            {
+                id: 'set-snacks',
+                name: 'Set Snacks',
+                price: 9n,
+                priceDisplay: '8,99 €',
+                category: 'irl',
+                image: 'https://images.unsplash.com/photo-1615865417236-d67f10b25e2d?q=80&w=400&auto=format&fit=crop',
+                count: 0
+            },
+            {
+                id: 'mansion-irl-naranja',
+                name: 'Mansión IRL Cat Naranja',
+                price: 100000000n,
+                priceDisplay: '$100,000,000',
+                category: 'luxury',
+                image: 'https://images.unsplash.com/photo-1613977257363-707ba9348227?q=80&w=400&auto=format&fit=crop',
+                count: 0
+            },
+            {
+                id: 'isla-privada-irl',
+                name: 'Isla Privada Felina IRL',
+                price: 50000000000n,
+                priceDisplay: '$50,000,000,000',
+                category: 'luxury',
+                image: 'https://images.unsplash.com/photo-1559128010-7c22ee8bef05?q=80&w=400&auto=format&fit=crop',
+                count: 0
+            },
+            {
+                id: 'flota-feline-x',
+                name: 'Flota Espacial Feline-X',
+                price: 500000000000n,
+                priceDisplay: '$500,000,000,000',
+                category: 'luxury',
+                image: 'https://images.unsplash.com/photo-1517976487492-5750f3195933?q=80&w=400&auto=format&fit=crop',
+                count: 0
+            },
+            {
+                id: 'galaxia-irl-orange',
+                name: 'Galaxia IRL Orange',
+                price: 200000000000000n,
+                priceDisplay: '$200,000,000,000,000',
+                category: 'luxury',
+                image: 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?q=80&w=400&auto=format&fit=crop',
+                count: 0
+            }
+        ];
+
+        let activeCategory = 'all';
+
+        function playCashSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.12);
+            } catch (e) {}
+        }
+
+        function formatBigMoney(bigintVal) {
+            return '$' + bigintVal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        function renderProducts() {
+            const container = document.getElementById('product-grid');
+            container.innerHTML = '';
+
+            const filtered = products.filter(p => activeCategory === 'all' || p.category === activeCategory);
+
+            filtered.forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-[24px] p-2.5 shadow-sm border border-orange-100 flex flex-col justify-between hover:shadow-md transition relative group";
+
+                card.innerHTML = `
+                    <div>
+                        <div class="relative aspect-square w-full rounded-[18px] overflow-hidden bg-orange-50 mb-2">
+                            <img src="${p.image}" alt="${p.name}" class="w-full h-full object-cover">
+                            ${p.count > 0 ? `<span class="absolute top-2 right-2 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow">x${p.count}</span>` : ''}
+                        </div>
+                        <h3 class="font-bold text-xs text-slate-800 leading-tight px-1 line-clamp-1">${p.name}</h3>
+                        <p class="font-extrabold text-xs text-slate-900 mt-0.5 px-1 font-mono">${p.priceDisplay}</p>
+                    </div>
+
+                    <div class="mt-2.5 space-y-1.5">
+                        <button onclick="buyProduct('${p.id}', 1)" class="w-full bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-extrabold text-[11px] py-2 rounded-xl transition flex items-center justify-center gap-1 shadow-sm">
+                            <span>Comprar</span>
+                            <div class="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center text-[10px]">✓</div>
+                        </button>
+                        <div class="flex items-center justify-between gap-1">
+                            <button onclick="buyProduct('${p.id}', 100)" title="Añadir 100" class="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-[10px] py-1 rounded-lg transition text-center border border-orange-200">
+                                +100
+                            </button>
+                            ${p.count > 0 ? `
+                                <button onclick="sellProduct('${p.id}', 1)" title="Vender 1" class="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold text-[10px] rounded-lg transition">
+                                    Vender
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function buyProduct(productId, amount = 1) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const totalCost = product.price * BigInt(amount);
+
+            if (currentBalance >= totalCost) {
+                currentBalance -= totalCost;
+                product.count += amount;
+
+                playCashSound();
+                updateUI();
+                renderProducts();
+
+                const balEl = document.getElementById('balance-display');
+                balEl.classList.remove('flash-animation');
+                void balEl.offsetWidth;
+                balEl.classList.add('flash-animation');
+
+                showToast(`Compraste ${amount}x ${product.name}`);
+            } else {
+                showToast("¡Saldo insuficiente de tu Quintillón!", "fa-triangle-exclamation");
+            }
+        }
+
+        function sellProduct(productId, amount = 1) {
+            const product = products.find(p => p.id === productId);
+            if (!product || product.count < amount) return;
+
+            const totalRefund = product.price * BigInt(amount);
+            currentBalance += totalRefund;
+            product.count -= amount;
+
+            updateUI();
+            renderProducts();
+            showToast(`Vendiste ${amount}x ${product.name}`);
+        }
+
+        function updateUI() {
+            const balEl = document.getElementById('balance-display');
+            balEl.innerText = formatBigMoney(currentBalance);
+
+            const totalSpent = INITIAL_BALANCE - currentBalance;
+            document.getElementById('bottom-spent-display').innerText = formatBigMoney(totalSpent);
+
+            let spentPercent = 0;
+            if (INITIAL_BALANCE > 0n) {
+                const ratio = Number(totalSpent * 10000000n / INITIAL_BALANCE) / 100000;
+                spentPercent = ratio.toFixed(5);
+            }
+
+            document.getElementById('spent-percentage').innerText = `${spentPercent}% gastado`;
+            
+            const pBar = document.getElementById('progress-bar');
+            pBar.style.width = `${Math.min(Math.max(spentPercent * 5, 1), 100)}%`;
+
+            const totalItemCount = products.reduce((acc, p) => acc + p.count, 0);
+            const badge = document.getElementById('cart-badge');
+
+            if (totalItemCount > 0) {
+                badge.innerText = totalItemCount > 99 ? '99+' : totalItemCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function setCategory(cat) {
+            activeCategory = cat;
+            document.querySelectorAll('#cat-all, #cat-irl, #cat-luxury').forEach(btn => {
+                btn.className = "px-3 py-1 rounded-full bg-white text-slate-600 font-semibold transition hover:bg-orange-100 border border-slate-200";
+            });
+
+            const activeBtn = document.getElementById(`cat-${cat}`);
+            if (activeBtn) {
+                activeBtn.className = "px-3 py-1 rounded-full bg-orange-500 text-white font-bold transition shadow-sm";
+            }
+
+            renderProducts();
+        }
+
+        function showToast(message, iconClass = "fa-circle-check") {
+            const toast = document.getElementById('toast-msg');
+            const icon = document.getElementById('toast-icon');
+            const text = document.getElementById('toast-text');
+
+            icon.className = `fa-solid ${iconClass} text-orange-400`;
+            text.innerText = message;
+
+            toast.classList.remove('-translate-y-12', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            clearTimeout(window.toastTimer);
+            window.toastTimer = setTimeout(() => {
+                toast.classList.add('-translate-y-12', 'opacity-0');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 2500);
+        }
+
+        function openCartModal() {
+            const modal = document.getElementById('cart-modal');
+            const container = document.getElementById('cart-items-container');
+            container.innerHTML = '';
+
+            const boughtItems = products.filter(p => p.count > 0);
+
+            if (boughtItems.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <i class="fa-solid fa-basket-shopping text-3xl mb-2 text-orange-300"></i>
+                        <p class="text-xs font-bold text-slate-700">Carrito de irlshop vacío</p>
+                        <p class="text-[11px] text-slate-400 mt-1">¡Añade productos para gastar tu quintillón!</p>
+                    </div>
+                `;
+            } else {
+                boughtItems.forEach(p => {
+                    const itemSpent = p.price * BigInt(p.count);
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = "flex items-center justify-between p-2.5 bg-white rounded-2xl border border-orange-100 text-xs shadow-sm";
+                    itemDiv.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <img src="${p.image}" class="w-10 h-10 rounded-xl object-cover border border-slate-200">
+                            <div>
+                                <h4 class="font-bold text-slate-800 leading-tight">${p.name}</h4>
+                                <p class="text-[11px] text-slate-400">${p.priceDisplay} × ${p.count}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-slate-900 font-mono">${formatBigMoney(itemSpent)}</p>
+                            <button onclick="sellProduct('${p.id}', ${p.count}); openCartModal();" class="text-[10px] text-rose-500 font-semibold hover:underline">
+                                Quitar todo
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(itemDiv);
+                });
+            }
+
+            const spentTotal = INITIAL_BALANCE - currentBalance;
+            document.getElementById('cart-total-spent').innerText = formatBigMoney(spentTotal);
+            document.getElementById('cart-remaining').innerText = formatBigMoney(currentBalance);
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('translate-y-10');
+            }, 10);
+        }
+
+        function closeCartModal() {
+            const modal = document.getElementById('cart-modal');
+            modal.classList.add('opacity-0');
+            modal.firstElementChild.classList.add('translate-y-10');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function resetGame() {
+            currentBalance = INITIAL_BALANCE;
+            products.forEach(p => p.count = 0);
+            updateUI();
+            renderProducts();
+            showToast("¡Saldo de $1 Quintillón reiniciado!");
+        }
+
+        function copyReceipt() {
+            const spentTotal = INITIAL_BALANCE - currentBalance;
+            const boughtItems = products.filter(p => p.count > 0);
+            
+            let text = `🧾 --- RECIBO OFICIAL irlshop ---\n`;
+            text += `Fortuna Inicial: $1,000,000,000,000,000,000\n\n`;
+            
+            boughtItems.forEach(p => {
+                text += `• ${p.name} (x${p.count}): ${formatBigMoney(p.price * BigInt(p.count))}\n`;
+            });
+            
+            text += `\n-----------------------------------\n`;
+            text += `Total Gastado: ${formatBigMoney(spentTotal)}\n`;
+            text += `Saldo Restante: ${formatBigMoney(currentBalance)}\n`;
+            text += `¡Gracias por tu compra en irlshop! 🐱🍊`;
+
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+
+            showToast("¡Recibo copiado al portapapeles!");
+        }
+
+        function openGamesModal() {
+            const modal = document.getElementById('games-modal');
+            document.getElementById('game-select-screen').classList.remove('hidden');
+            document.getElementById('game-play-screen').classList.add('hidden');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('translate-y-10');
+            }, 10);
+        }
+
+        function closeGamesModal() {
+            if (window.catGameTimer) clearInterval(window.catGameTimer);
+            const modal = document.getElementById('games-modal');
+            modal.classList.add('opacity-0');
+            modal.firstElementChild.classList.add('translate-y-10');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // GAME 1: ATRAPA AL GATO NARANJA IRL
+        let catScore = 0;
+        let catTimeLeft = 10;
+
+        function startCatTapGame() {
+            document.getElementById('game-select-screen').classList.add('hidden');
+            const arena = document.getElementById('game-play-screen');
+            arena.classList.remove('hidden');
+            catScore = 0;
+            catTimeLeft = 10;
+
+            arena.innerHTML = `
+                <div class="w-full flex justify-between items-center text-xs px-2 font-mono">
+                    <span class="text-orange-400 font-bold">Puntos: <span id="cat-score">0</span>/10</span>
+                    <span class="text-slate-300 font-bold">Tiempo: <span id="cat-timer">10</span>s</span>
+                </div>
+                <div id="cat-box" class="relative w-full h-48 bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden flex items-center justify-center">
+                    <button id="cat-btn" onclick="tapCat()" class="absolute transition-all duration-150 p-2 text-4xl active:scale-75 select-none focus:outline-none">
+                        🐱
+                    </button>
+                </div>
+                <button onclick="openGamesModal()" class="text-xs text-slate-400 hover:text-white underline mt-1">Volver a Selección</button>
+            `;
+
+            moveCat();
+            if (window.catGameTimer) clearInterval(window.catGameTimer);
+            window.catGameTimer = setInterval(() => {
+                catTimeLeft--;
+                const timerEl = document.getElementById('cat-timer');
+                if (timerEl) timerEl.innerText = catTimeLeft;
+
+                if (catTimeLeft <= 0) {
+                    clearInterval(window.catGameTimer);
+                    if (catScore >= 10) {
+                        rewardGameVictory("Atrapa al Gato Naranja IRL");
+                    } else {
+                        showGameFailure("Se acabó el tiempo. Necesitabas 10 toques.");
+                    }
+                }
+            }, 1000);
+        }
+
+        function tapCat() {
+            catScore++;
+            playCashSound();
+            const scoreEl = document.getElementById('cat-score');
+            if (scoreEl) scoreEl.innerText = catScore;
+
+            if (catScore >= 10) {
+                if (window.catGameTimer) clearInterval(window.catGameTimer);
+                rewardGameVictory("Atrapa al Gato Naranja IRL");
+            } else {
+                moveCat();
+            }
+        }
+
+        function moveCat() {
+            const btn = document.getElementById('cat-btn');
+            const box = document.getElementById('cat-box');
+            if (!btn || !box) return;
+
+            const maxX = box.clientWidth - 60;
+            const maxY = box.clientHeight - 60;
+            const randX = Math.max(10, Math.floor(Math.random() * maxX));
+            const randY = Math.max(10, Math.floor(Math.random() * maxY));
+
+            btn.style.left = `${randX}px`;
+            btn.style.top = `${randY}px`;
+        }
+
+        // GAME 2: MEMORIA SNACKS IRL
+        let memoryCards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+
+        function startMemoryGame() {
+            document.getElementById('game-select-screen').classList.add('hidden');
+            const arena = document.getElementById('game-play-screen');
+            arena.classList.remove('hidden');
+            
+            matchedPairs = 0;
+            flippedCards = [];
+            const icons = ['🐱', '🥫', '🛋️', '🥣', '🐱', '🥫', '🛋️', '🥣'];
+            memoryCards = icons.sort(() => Math.random() - 0.5);
+
+            let gridHTML = `<div class="grid grid-cols-4 gap-2.5 w-full max-w-[280px]">`;
+            memoryCards.forEach((icon, index) => {
+                gridHTML += `
+                    <div id="mcard-${index}" onclick="flipMemoryCard(${index})" 
+                         class="h-16 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center text-2xl cursor-pointer hover:border-orange-400 transition font-mono active:scale-95 select-none">
+                        ❓
+                    </div>
+                `;
+            });
+            gridHTML += `</div>`;
+
+            arena.innerHTML = `
+                <p class="text-xs text-orange-400 font-semibold mb-1">Empareja las 4 parejas de snacks y objetos:</p>
+                ${gridHTML}
+                <button onclick="openGamesModal()" class="text-xs text-slate-400 hover:text-white underline mt-2">Volver a Selección</button>
+            `;
+        }
+
+        function flipMemoryCard(index) {
+            if (flippedCards.length >= 2 || flippedCards.includes(index)) return;
+
+            const cardEl = document.getElementById(`mcard-${index}`);
+            cardEl.innerText = memoryCards[index];
+            cardEl.classList.add('bg-slate-700', 'border-orange-400');
+            flippedCards.push(index);
+
+            if (flippedCards.length === 2) {
+                const [first, second] = flippedCards;
+                if (memoryCards[first] === memoryCards[second]) {
+                    matchedPairs++;
+                    playCashSound();
+                    flippedCards = [];
+                    if (matchedPairs === 4) {
+                        setTimeout(() => rewardGameVictory("Memoria Snacks IRL"), 400);
+                    }
+                } else {
+                    setTimeout(() => {
+                        const card1 = document.getElementById(`mcard-${first}`);
+                        const card2 = document.getElementById(`mcard-${second}`);
+                        if (card1) {
+                            card1.innerText = '❓';
+                            card1.classList.remove('bg-slate-700', 'border-orange-400');
+                        }
+                        if (card2) {
+                            card2.innerText = '❓';
+                            card2.classList.remove('bg-slate-700', 'border-orange-400');
+                        }
+                        flippedCards = [];
+                    }, 700);
+                }
+            }
+        }
+
+        function rewardGameVictory(gameName) {
+            currentBalance += ONE_TRILLION;
+            updateUI();
+            playCashSound();
+
+            const arena = document.getElementById('game-play-screen');
+            arena.innerHTML = `
+                <div class="space-y-3 py-4">
+                    <div class="text-4xl animate-bounce">🎉</div>
+                    <h3 class="text-base font-extrabold text-orange-400">¡Juego Completado!</h3>
+                    <p class="text-xs text-slate-200">Has ganado <strong>+1 Trillón</strong> de monedas ficticias en <i>${gameName}</i>.</p>
+                    <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-[11px] font-mono text-emerald-400">
+                        +$1,000,000,000,000 Ficticios
+                    </div>
+                    <p class="text-[9.5px] text-slate-400 italic px-2">Recordatorio: El jugador debe completar juegos para ganar monedas virtuales. Cada juego completado otorga 1 trillón de monedas ficticias. Estas monedas no tienen valor real y no pueden convertirse en dinero real.</p>
+                    <button onclick="openGamesModal()" class="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition shadow">
+                        Jugar de Nuevo
+                    </button>
+                </div>
+            `;
+            showToast("¡+1 Trillón de monedas ficticias agregadas!", "fa-coins");
+        }
+
+        function showGameFailure(reason) {
+            const arena = document.getElementById('game-play-screen');
+            arena.innerHTML = `
+                <div class="space-y-3 py-4">
+                    <div class="text-3xl">⏰</div>
+                    <h3 class="text-sm font-extrabold text-orange-400">¡Inténtalo de nuevo!</h3>
+                    <p class="text-xs text-slate-300">${reason}</p>
+                    <button onclick="startCatTapGame()" class="bg-orange-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition shadow">
+                        Reintentar
+                    </button>
+                </div>
+            `;
+        }
+
+        window.onload = function() {
+            updateUI();
+            renderProducts();
+        };
+    </script>
+</body>
+</html>
