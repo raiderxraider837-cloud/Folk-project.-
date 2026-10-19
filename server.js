@@ -1,133 +1,220 @@
-/* linktrace — rastreador de enlaces tipo grabify (Node puro) */
+
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
-// Dominio que verán los links. Cámbialo por el tuyo si no controlas robiox.com.
 const BASE = (process.env.BASE_URL || 'https://folk-project.onrender.com').replace(/\/+$/, '');
 const DATA_FILE = path.join(__dirname, 'data.json');
+const HTML_FILE = path.join(__dirname, 'folkenstein.html');
 
 let db = { links: {} };
-try { db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch (_) {}
-const save = () => fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
 
-function newCode(n = 6) {
-  const a = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let s = ''; for (let i = 0; i < n; i++) s += a[crypto.randomInt(a.length)];
-  return s;
-}
-const linkURL = c => BASE + '/' + c;
+try {
+  const saved = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  if (saved && saved.links && typeof saved.links === 'object') db = saved;
+} catch (_) {}
 
-const json = (res, o, s = 200) => {
-  res.writeHead(s, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-  res.end(JSON.stringify(o));
-};
-const readBody = req => new Promise(r => { let b = ''; req.on('data', c => b += c); req.on('end', () => r(b)); });
-
-function clientIP(req) {
-  const xff = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-  let ip = xff || req.socket.remoteAddress || '';
-  if (ip.startsWith('::ffff:')) ip = ip.slice(7);
-  return ip;
-}
-const isPrivate = ip => !ip || ip === '::1' || ip.startsWith('127.') || ip.startsWith('10.') ||
-  ip.startsWith('192.168.') || /^172\.(1[6-9]|2\d|3[01])\./.test(ip);
-
-async function geoLookup(ip) {
-  if (isPrivate(ip)) return null;
-  try {
-    const r = await fetch('http://ip-api.com/json/' + encodeURIComponent(ip) +
-      '?fields=status,country,countryCode,regionName,city,zip,isp,org,as,timezone');
-    const j = await r.json();
-    if (j.status !== 'success') return null;
-    return { country: j.country, cc: j.countryCode, region: j.regionName, city: j.city,
-             zip: j.zip, isp: j.isp, org: j.org, asn: j.as, timezone: j.timezone };
-  } catch (_) { return null; }
+function save() {
+  const temp = DATA_FILE + '.tmp';
+  fs.writeFileSync(temp, JSON.stringify(db, null, 2));
+  fs.renameSync(temp, DATA_FILE);
 }
 
-function parseUA(ua) {
-  const o = { browser: 'Desconocido', os: 'Desconocido', device: 'Escritorio' };
-  if (/Edg\//.test(ua)) o.browser = 'Edge';
-  else if (/OPR\/|Opera/.test(ua)) o.browser = 'Opera';
-  else if (/Firefox\//.test(ua)) o.browser = 'Firefox';
-  else if (/Chrome\//.test(ua) && !/Chromium/.test(ua)) o.browser = 'Chrome';
-  else if (/Safari\//.test(ua) && /Version\//.test(ua)) o.browser = 'Safari';
-  if (/Windows NT 10/.test(ua)) o.os = 'Windows 10/11';
-  else if (/Windows/.test(ua)) o.os = 'Windows';
-  else if (/Android/.test(ua)) o.os = 'Android';
-  else if (/iPhone|iPad|iPod/.test(ua)) o.os = 'iOS';
-  else if (/Mac OS X/.test(ua)) o.os = 'macOS';
-  else if (/Linux/.test(ua)) o.os = 'Linux';
-  if (/iPad|Tablet/.test(ua)) o.device = 'Tablet';
-  else if (/Mobile|Android|iPhone/.test(ua)) o.device = 'Móvil';
-  return o;
+function newCode() {
+  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code;
+  do {
+    code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars[crypto.randomInt(chars.length)];
+    }
+  } while (db.links[code]);
+  return code;
 }
 
-function serveIndex(res) {
-  fs.readFile(path.join(__dirname, 'index.html'), (e, buf) => {
-    if (e) { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end('<h1>linktrace</h1>'); }
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end(buf);
+function json(res, data, status = 200) {
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store'
+  });
+  res.end(JSON.stringify(data));
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+      if (body.length > 20000) {
+        reject(new Error('Solicitud demasiado grande'));
+        req.destroy();
+      }
+    });
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
   });
 }
 
+function servePage(res) {
+  fs.readFile(HTML_FILE, (err, data) => {
+    if (err) {
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('No se encuentra folkenstein.html. Revisa los archivos de GitHub.');
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store'
+    });
+    res.end(data);
+  });
+}
+
+function validDestination(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (_) {
+    return false;
+  }
+}
+
 const server = http.createServer(async (req, res) => {
-  const p = new URL(req.url, 'http://' + (req.headers.host || 'localhost')).pathname;
+  let url;
 
-  if (p === '/' || p === '/index.html') return serveIndex(res);
-  if (p === '/favicon.ico') { res.writeHead(204); return res.end(); }
-  if (p === '/api/config') return json(res, { base: BASE });
+  try {
+    url = new URL(req.url, 'http://localhost');
+  } catch (_) {
+    return json(res, { error: 'URL no válida' }, 400);
+  }
 
-  if (p === '/api/links') {
-    if (req.method === 'GET') {
-      return json(res, Object.values(db.links).sort((a, b) => b.created - a.created).map(l => ({
-        code: l.code, dest: l.dest, label: l.label, created: l.created, clicks: l.visits.length, url: linkURL(l.code)
-      })));
-    }
-    if (req.method === 'POST') {
-      let o = {}; try { o = JSON.parse(await readBody(req) || '{}'); } catch (_) {}
-      let dest = String(o.dest || '').trim();
-      if (!dest) return json(res, { error: 'Escribe un destino' }, 400);
+  const route = url.pathname;
+
+  if (req.method === 'GET' && (route === '/' || route === '/folkenstein.html')) {
+    return servePage(res);
+  }
+
+  if (route === '/favicon.ico') {
+    res.writeHead(204);
+    return res.end();
+  }
+
+  if (req.method === 'GET' && route === '/api/config') {
+    return json(res, { base: BASE });
+  }
+
+  if (route === '/api/links' && req.method === 'GET') {
+    const links = Object.values(db.links)
+      .sort((a, b) => b.created - a.created)
+      .map(link => ({
+        code: link.code,
+        dest: link.dest,
+        label: link.label,
+        created: link.created,
+        clicks: link.clicks || 0,
+        url: BASE + '/' + link.code
+      }));
+
+    return json(res, links);
+  }
+
+  if (route === '/api/links' && req.method === 'POST') {
+    try {
+      const body = JSON.parse(await readBody(req) || '{}');
+      let dest = String(body.dest || '').trim();
+      const label = String(body.label || '').trim().slice(0, 100);
+
+      if (!dest) {
+        return json(res, { error: 'Escribe un destino' }, 400);
+      }
+
       if (!/^https?:\/\//i.test(dest)) dest = 'https://' + dest;
-      const c = newCode();
-      db.links[c] = { code: c, dest, label: String(o.label || '').trim(), created: Date.now(), visits: [] };
+
+      if (!validDestination(dest)) {
+        return json(res, { error: 'El destino debe ser una URL HTTP o HTTPS válida' }, 400);
+      }
+
+      const code = newCode();
+
+      db.links[code] = {
+        code,
+        dest,
+        label,
+        created: Date.now(),
+        clicks: 0
+      };
+
       save();
-      return json(res, { ok: true, code: c, url: linkURL(c) });
+
+      return json(res, {
+        ok: true,
+        code,
+        url: BASE + '/' + code
+      }, 201);
+    } catch (_) {
+      return json(res, { error: 'No se pudo procesar la solicitud' }, 400);
     }
   }
 
-  if (p.startsWith('/api/links/')) {
-    const c = decodeURIComponent(p.slice('/api/links/'.length));
-    const l = db.links[c];
-    if (!l) return json(res, { error: 'No existe' }, 404);
-    if (req.method === 'GET') return json(res, { ...l, url: linkURL(c) });
-    if (req.method === 'DELETE') { delete db.links[c]; save(); return json(res, { ok: true }); }
+  const match = route.match(/^\/api\/links\/([A-Za-z0-9]+)$/);
+
+  if (match) {
+    const code = match[1];
+    const link = db.links[code];
+
+    if (!link) return json(res, { error: 'No existe' }, 404);
+
+    if (req.method === 'GET') {
+      return json(res, {
+        code: link.code,
+        dest: link.dest,
+        label: link.label,
+        created: link.created,
+        clicks: link.clicks || 0,
+        url: BASE + '/' + code
+      });
+    }
+
+    if (req.method === 'DELETE') {
+      delete db.links[code];
+      save();
+      return json(res, { ok: true });
+    }
   }
 
-  // --- cualquier otra ruta = link rastreador ---
-  const c = decodeURIComponent(p.replace(/^\/+/, ''));
-  const l = db.links[c];
-  if (!l) { res.writeHead(302, { Location: '/' }); return res.end(); }
+  if (req.method === 'GET' && route.length > 1) {
+    const code = route.slice(1);
 
-  const ip = clientIP(req);
-  const ua = req.headers['user-agent'] || '';
-  const v = {
-    ip, time: Date.now(), ua,
-    lang: req.headers['accept-language'] || '',
-    ref: req.headers['referer'] || req.headers['referrer'] || '',
-    ...parseUA(ua)
-  };
-  l.visits.unshift(v);
-  if (l.visits.length > 1000) l.visits.length = 1000;
-  save();
+    if (!/^[A-Za-z0-9]{6}$/.test(code)) {
+      res.writeHead(302, { Location: '/' });
+      return res.end();
+    }
 
-  geoLookup(ip).then(g => { if (g) { v.geo = g; save(); } });
+    const link = db.links[code];
 
-  // redirección instantánea, sin interfaz
-  res.writeHead(302, { Location: l.dest, 'Cache-Control': 'no-store, max-age=0' });
-  res.end();
+    if (!link) {
+      res.writeHead(302, { Location: '/' });
+      return res.end();
+    }
+
+    link.clicks = (link.clicks || 0) + 1;
+
+    try {
+      save();
+    } catch (_) {}
+
+    res.writeHead(302, {
+      Location: link.dest,
+      'Cache-Control': 'no-store'
+    });
+    return res.end();
+  }
+
+  return json(res, { error: 'Ruta no encontrada' }, 404);
 });
 
-server.listen(PORT, () => console.log('linktrace en http://localhost:' + PORT + '  (base: ' + BASE + ')')); 
+server.listen(PORT, '0.0.0.0', () => {
+  console.log('LinkTrace iniciado en el puerto ' + PORT);
+});
