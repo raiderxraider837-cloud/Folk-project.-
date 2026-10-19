@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>linktrace</title>
+<style>
+  :root{--bg:#0d0f14;--panel:#151922;--line:#232a38;--txt:#e7ecf3;--mut:#8b97a8;--acc:#4f8cff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:20px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  header h1{margin:0;font-size:22px}header h1 b{color:var(--acc)}
+  header .sub{color:var(--mut);font-size:13px}
+  header input{margin-left:auto;max-width:230px}
+  main{max-width:820px;margin:0 auto;padding:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+  .card h2{margin:0 0 14px;font-size:14px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+  input{width:100%;padding:11px 13px;margin-bottom:10px;background:#0b0e13;border:1px solid var(--line);border-radius:9px;color:var(--txt);font-size:15px}
+  input:focus{outline:none;border-color:var(--acc)}
+  button{cursor:pointer;border:0;border-radius:9px;padding:11px 16px;font-size:14px;font-weight:600;background:var(--acc);color:#fff}
+  button.mini{padding:6px 10px;font-size:12.5px;background:#1d2431;color:var(--txt)}
+  button.danger{background:#2a1a1f;color:#ff9b9b}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .link-item{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+  .link-item:first-child{border-top:0}
+  .dest{font-weight:600;word-break:break-all}
+  .short{color:var(--acc);font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all}
+  .meta{color:var(--mut);font-size:12.5px}
+  .pill{background:#12203a;color:#8fb6ff;border-radius:20px;padding:3px 10px;font-size:12.5px;font-weight:600}
+  .big-link{font-family:ui-monospace,Menlo,monospace;background:#0b0e13;border:1px dashed var(--line);border-radius:9px;padding:12px;word-break:break-all;color:var(--acc)}
+  .visit{border-top:1px solid var(--line);padding:12px 0;font-size:13.5px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}td{padding:4px 0;vertical-align:top}td:first-child{color:var(--mut);width:120px}
+  .empty{color:var(--mut);font-size:13.5px}
+  #stats{position:fixed;inset:0;background:rgba(6,8,12,.8);display:none;padding:20px;overflow:auto;z-index:50}
+  #stats.on{display:block}#stats .card{max-width:820px;margin:20px auto}.close{float:right}
+</style>
+</head>
+<body>
+<header>
+  <h1>link<b>trace</b></h1><span class="sub">rastreador de enlaces</span>
+  <input id="base" title="Dominio de los links" placeholder="https://robIox.com">
+</header>
+<main>
+  <section class="card">
+    <h2>Nuevo enlace</h2>
+    <input id="dest" placeholder="https://roblox.com" autocomplete="off">
+    <input id="label" placeholder="Etiqueta (opcional)" autocomplete="off">
+    <button id="create">Crear enlace</button>
+    <div id="result"></div>
+  </section>
+  <section class="card">
+    <h2>Mis enlaces <span id="count" class="meta"></span></h2>
+    <div id="list"><div class="empty">Todavía no has creado enlaces.</div></div>
+  </section>
+</main>
+<div id="stats"><div class="card">
+  <button class="close mini" id="closeStats">Cerrar</button>
+  <h2 id="statsTitle">Visitas</h2><div id="statsBody"></div>
+</div></div>
+<script>
+const $ = s => document.querySelector(s);
+const api = (p, o) => fetch(p, o).then(r => r.json());
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let BASE = localStorage.getItem('lt_base') || '';
+const shortUrl = c => BASE.replace(/\/+$/, '') + '/' + c;
+
+function copy(t, b){ navigator.clipboard.writeText(t).then(() => { const o = b.textContent; b.textContent = '¡Copiado!'; setTimeout(() => b.textContent = o, 1200); }); }
+
+async function createLink(){
+  const dest = $('#dest').value.trim();
+  if (!dest) return $('#dest').focus();
+  const r = await api('/api/links', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ dest, label: $('#label').value.trim() }) });
+  if (r.error) return alert(r.error);
+  const u = shortUrl(r.code);
+  $('#result').innerHTML = '<div class="big-link">' + u + '</div>' +
+    '<div class="row" style="margin-top:10px"><button class="mini" onclick="copy(\'' + u + '\',this)">Copiar</button>' +
+    '<span class="meta">Quien lo abra va al destino al instante y su info aparece abajo.</span></div>';
+  $('#dest').value = ''; $('#label').value = ''; load();
+}
+
+async function load(){
+  const links = await api('/api/links');
+  $('#count').textContent = links.length ? '(' + links.length + ')' : '';
+  if (!links.length) return $('#list').innerHTML = '<div class="empty">Todavía no has creado enlaces.</div>';
+  $('#list').innerHTML = links.map(l => {
+    const u = shortUrl(l.code);
+    return '<div class="link-item"><div><div class="dest">' + esc(l.label || l.dest) + '</div>' +
+      '<div class="short">' + u + '</div><div class="meta">' + esc(l.dest) + ' · ' + new Date(l.created).toLocaleString() + '</div></div>' +
+      '<div class="row"><span class="pill">' + l.clicks + ' click' + (l.clicks === 1 ? '' : 's') + '</span>' +
+      '<button class="mini" onclick="copy(\'' + u + '\',this)">Copiar</button>' +
+      '<button class="mini" onclick="stats(\'' + l.code + '\')">Ver</button>' +
+      '<button class="mini danger" onclick="del(\'' + l.code + '\')">Borrar</button></div></div>';
+  }).join('');
+}
+
+async function del(c){ if (!confirm('¿Borrar este enlace?')) return; await api('/api/links/' + c, { method:'DELETE' }); load(); }
+
+async function stats(c){
+  const l = await api('/api/links/' + c);
+  $('#statsTitle').textContent = 'Visitas · ' + (l.label || l.dest);
+  if (!l.visits.length) $('#statsBody').innerHTML = '<div class="empty">Nadie lo ha abierto todavía.</div>';
+  else $('#statsBody').innerHTML = l.visits.map(v => {
+    const g = v.geo || {};
+    const loc = [g.city, g.region, g.country].filter(Boolean).join(', ') || 'Desconocida';
+    return '<div class="visit"><table>' +
+      '<tr><td>IP</td><td><b>' + esc(v.ip) + '</b></td></tr>' +
+      '<tr><td>Ubicación</td><td>' + esc(loc) + (g.cc ? ' (' + esc(g.cc) + ')' : '') + '</td></tr>' +
+      '<tr><td>ISP</td><td>' + esc(g.isp || g.org || '—') + '</td></tr>' +
+      (g.asn ? '<tr><td>ASN</td><td>' + esc(g.asn) + '</td></tr>' : '') +
+      '<tr><td>Horario</td><td>' + esc(g.timezone || '—') + '</td></tr>' +
+      '<tr><td>Dispositivo</td><td>' + esc(v.device) + ' · ' + esc(v.os) + ' · ' + esc(v.browser) + '</td></tr>' +
+      '<tr><td>Idioma</td><td>' + esc(v.lang || '—') + '</td></tr>' +
+      '<tr><td>Referer</td><td>' + esc(v.ref || 'directo') + '</td></tr>' +
+      '<tr><td>User-Agent</td><td>' + esc(v.ua) + '</td></tr>' +
+      '<tr><td>Fecha</td><td>' + new Date(v.time).toLocaleString() + '</td></tr>' +
+      '</table></div>';
+  }).join('');
+  $('#stats').classList.add('on');
+}
+
+$('#create').onclick = createLink;
+$('#dest').addEventListener('keydown', e => { if (e.key === 'Enter') createLink(); });
+$('#base').addEventListener('change', e => { BASE = e.target.value.trim(); localStorage.setItem('lt_base', BASE); load(); });
+$('#closeStats').onclick = () => $('#stats').classList.remove('on');
+$('#stats').onclick = e => { if (e.target.id === 'stats') $('#stats').classList.remove('on'); };
+
+(async () => {
+  const c = await api('/api/config');
+  if (!BASE) BASE = c.base;
+  $('#base').value = BASE;
+  load(); setInterval(load, 5000);
+})();
+</script>
+</body>
+</html>
