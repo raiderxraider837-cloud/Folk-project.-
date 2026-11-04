@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Etoh Cheats | Roblox Advanced Scripts Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f050a;
+            --bg-card: #1a0913;
+            --primary: #ff2a85;
+            --primary-glow: rgba(255, 42, 133, 0.4);
+            --accent: #ff75b5;
+            --text-main: #ffffff;
+            --text-muted: #d0b0c2;
+            --border: #4a1535;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(255, 42, 133, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(200, 20, 100, 0.1) 0%, transparent 40%);
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 20px 30px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px var(--primary-glow);
+            letter-spacing: 1px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-top: 10px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .script-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 42, 133, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .script-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 25px var(--primary-glow);
+            border-color: var(--primary);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .script-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .badge-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .badge {
+            background: rgba(255, 42, 133, 0.15);
+            color: var(--accent);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(255, 42, 133, 0.3);
+        }
+
+        .script-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .code-box-container {
+            position: relative;
+            background: #090206;
+            border-radius: 10px;
+            border: 1px solid #331024;
+            overflow: hidden;
+        }
+
+        pre {
+            padding: 20px;
+            overflow-x: auto;
+            max-height: 250px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #ff99cc;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) var(--bg-dark);
+        }
+
+        pre::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        pre::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 3px;
+        }
+
+        .copy-btn {
+            background: linear-gradient(135deg, var(--primary), #cc1b6b);
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px var(--primary-glow);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .copy-btn:hover {
+            transform: scale(1.02);
+            filter: brightness(1.15);
+            box-shadow: 0 6px 20px var(--primary-glow);
+        }
+
+        .copy-btn:active {
+            transform: scale(0.98);
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+            margin-top: 50px;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #1a0913;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: 1px solid var(--primary);
+            box-shadow: 0 5px 25px var(--primary-glow);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+            font-weight: 600;
+        }
+
+        .notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>ETOH CHEATS</h1>
+        <p class="subtitle">High-performance Roblox physical movement scripts & analyzer hub.</p>
+    </header>
+
+    <div class="container">
+
+        <!-- Script 1 -->
+        <div class="script-card">
+            <div class="card-header">
+                <div class="script-title">Physical Infinite Jump Script</div>
+                <div class="badge-group">
+                    <span class="badge">v2.5 Stable</span>
+                    <span class="badge">Movement / Physics</span>
+                </div>
+            </div>
+            <div class="script-desc">
+                Advanced custom physics-based infinite jump controller. Features coyote time, wallhop mechanics, intelligent ceiling collision locks, and smooth animation transitions for high-difficulty obbies across any Roblox experience.
+            </div>
+            <div class="code-box-container">
+                <pre><code id="script1">local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local Player = Players.LocalPlayer
+
+local InfiniteJump = true
+local PersistentInfiniteJump = true
+
+local JUMP_HEIGHT = 7.2
+local COYOTE_TIME = 0.05
+
+local WALL_DISTANCE = 1.05
+
+local HEAD_CHECK_DISTANCE = 0.30
+local HEAD_CHECK_HEIGHT = 0.10
+local HEAD_NORMAL_THRESHOLD = -0.85
+
+local CEILING_LOCK_MIN_TIME = 0.10
+local CEILING_CLEAR_TIME = 0.08
+
+local JUMP_REQUEST_COOLDOWN = 0.055
+local JUMP_INPUT_RELEASE_TIME = 0.12
+local WALLHOP_COOLDOWN = 0.08
+
+local JUMP_ANIMATION_ID = "rbxassetid://125750702"
+local FALL_ANIMATION_ID = "rbxassetid://180436148"
+local CLIMB_ANIMATION_ID = "rbxassetid://180436334"
+
+local JUMP_ANIMATION_SPEED = 0.85
+local FALL_ANIMATION_SPEED = 0.8
+local CLIMB_ANIMATION_SPEED = 0.9
+
+local JUMP_MIN_ANIMATION_TIME = 0.45
+local FALL_START_VELOCITY = -1.5
+local FALL_TRANSITION_TIME = 0.25
+
+local Character
+local Humanoid
+local Root
+local Head
+local Animator
+
+local JumpTrack
+local FallTrack
+local ClimbTrack
+local StateConnection
+
+local LastGrounded = 0
+local LastJumpRequest = 0
+local LastWallhop = 0
+local LastJumpInput = 0
+
+local JumpInputLocked = false
+
+local JumpActive = false
+local JumpStartTime = 0
+local JumpVelocity = 0
+local JumpFlightTime = 0
+
+local CustomJumpActive = false
+local TrussLaunchActive = false
+
+local WallContact = false
+local WallNormal = nil
+local PreviousWallContact = false
+
+local CeilingLock = false
+local CeilingLockStarted = 0
+local CeilingClearSince = 0
+
+local JumpAnimationPlayed = false
+local FallAnimationPlayed = false
+local JumpAnimationStart = 0
+
+local GUI = Instance.new("ScreenGui")
+GUI.Name = "PhysicalJumpController"
+GUI.ResetOnSpawn = false
+GUI.Parent = Player:WaitForChild("PlayerGui")
+
+local Toggle = Instance.new("TextButton")
+Toggle.Name = "InvisibleToggle"
+Toggle.Size = UDim2.fromOffset(80, 30)
+Toggle.Position = UDim2.new(0.5, -40, 0.5, -90)
+Toggle.BackgroundTransparency = 1
+Toggle.TextTransparency = 1
+Toggle.BorderSizePixel = 0
+Toggle.Text = ""
+Toggle.AutoButtonColor = false
+Toggle.Parent = GUI
+
+Toggle.Activated:Connect(function()
+	InfiniteJump = not InfiniteJump
+	PersistentInfiniteJump = InfiniteJump
+
+	if not InfiniteJump then
+		JumpActive = false
+		CustomJumpActive = false
+		TrussLaunchActive = false
+
+		JumpVelocity = 0
+		JumpFlightTime = 0
+
+		CeilingLock = false
+		CeilingLockStarted = 0
+		CeilingClearSince = 0
+	end
+end)
+
+local function GetJumpVelocity()
+	return math.sqrt(2 * workspace.Gravity * JUMP_HEIGHT)
+end
+
+local function GetJumpFlightTime()
+	return 2 * GetJumpVelocity() / workspace.Gravity
+end
+
+local function StopTrack(track, fadeTime)
+	if track and track.IsPlaying then
+		track:Stop(fadeTime or 0.15)
+	end
+end
+
+local function GetRayParams()
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = {Character}
+	params.IgnoreWater = true
+	params.RespectCanCollide = true
+	return params
+end
+
+local function IsGrounded(state)
+	return state == Enum.HumanoidStateType.Running
+		or state == Enum.HumanoidStateType.RunningNoPhysics
+		or state == Enum.HumanoidStateType.Landed
+end
+
+local function LoadAnimations()
+	if not Animator then
+		return
+	end
+
+	if JumpTrack then
+		JumpTrack:Destroy()
+	end
+
+	if FallTrack then
+		FallTrack:Destroy()
+	end
+
+	if ClimbTrack then
+		ClimbTrack:Destroy()
+	end
+
+	local jumpAnimation = Instance.new("Animation")
+	jumpAnimation.AnimationId = JUMP_ANIMATION_ID
+
+	local fallAnimation = Instance.new("Animation")
+	fallAnimation.AnimationId = FALL_ANIMATION_ID
+
+	local climbAnimation = Instance.new("Animation")
+	climbAnimation.AnimationId = CLIMB_ANIMATION_ID
+
+	JumpTrack = Animator:LoadAnimation(jumpAnimation)
+	FallTrack = Animator:LoadAnimation(fallAnimation)
+	ClimbTrack = Animator:LoadAnimation(climbAnimation)
+
+	JumpTrack.Priority = Enum.AnimationPriority.Action
+	FallTrack.Priority = Enum.AnimationPriority.Action
+	ClimbTrack.Priority = Enum.AnimationPriority.Action
+
+	JumpTrack.Looped = false
+	FallTrack.Looped = false
+	ClimbTrack.Looped = true
+
+	JumpTrack:AdjustSpeed(JUMP_ANIMATION_SPEED)
+	FallTrack:AdjustSpeed(FALL_ANIMATION_SPEED)
+	ClimbTrack:AdjustSpeed(CLIMB_ANIMATION_SPEED)
+end
+
+local function PlayJumpAnimation()
+	if not JumpTrack or JumpAnimationPlayed then
+		return
+	end
+
+	JumpAnimationPlayed = true
+	FallAnimationPlayed = false
+	JumpAnimationStart = os.clock()
+
+	StopTrack(FallTrack, 0.15)
+	StopTrack(ClimbTrack, 0.15)
+
+	JumpTrack.TimePosition = 0
+	JumpTrack:Play(0.1, 1, JUMP_ANIMATION_SPEED)
+end
+
+local function PlayFallAnimation()
+	if not FallTrack or FallAnimationPlayed then
+		return
+	end
+
+	if os.clock() - JumpAnimationStart < JUMP_MIN_ANIMATION_TIME then
+		return
+	end
+
+	FallAnimationPlayed = true
+
+	StopTrack(JumpTrack, FALL_TRANSITION_TIME)
+	StopTrack(ClimbTrack, 0.15)
+
+	FallTrack.TimePosition = 0
+	FallTrack:Play(
+		FALL_TRANSITION_TIME,
+		1,
+		FALL_ANIMATION_SPEED
+	)
+end
+
+local function UpdateAnimations()
+	if not Humanoid or not Root then
+		return
+	end
+
+	local state = Humanoid:GetState()
+
+	if state == Enum.HumanoidStateType.Climbing then
+		StopTrack(JumpTrack, 0.15)
+		StopTrack(FallTrack, 0.15)
+
+		if ClimbTrack then
+			if not ClimbTrack.IsPlaying then
+				ClimbTrack.TimePosition = 0
+				ClimbTrack:Play(0.15, 1, CLIMB_ANIMATION_SPEED)
+			end
+
+			if math.abs(Root.AssemblyLinearVelocity.Y) < 0.05 then
+				ClimbTrack:AdjustSpeed(0)
+			else
+				ClimbTrack:AdjustSpeed(CLIMB_ANIMATION_SPEED)
+			end
+		end
+
+		return
+	end
+
+	StopTrack(ClimbTrack, 0.15)
+
+	if not CustomJumpActive or CeilingLock then
+		return
+	end
+
+	if not JumpAnimationPlayed then
+		PlayJumpAnimation()
+	end
+
+	if Root.AssemblyLinearVelocity.Y <= FALL_START_VELOCITY then
+		PlayFallAnimation()
+	end
+end
+
+local function DetectWall()
+	if not Root then
+		return false, nil
+	end
+
+	local params = GetRayParams()
+
+	local directions = {
+		Vector3.new(1, 0, 0),
+		Vector3.new(-1, 0, 0),
+		Vector3.new(0, 0, 1),
+		Vector3.new(0, 0, -1)
+	}
+
+	local closestNormal = nil
+	local closestDistance = math.huge
+
+	for _, direction in ipairs(directions) do
+		local result = workspace:Raycast(
+			Root.Position,
+			direction * WALL_DISTANCE,
+			params
+		)
+
+		if result then
+			local normal = Vector3.new(
+				result.Normal.X,
+				0,
+				result.Normal.Z
+			)
+
+			if normal.Magnitude > 0.2 then
+				local distance = (result.Position - Root.Position).Magnitude
+
+				if distance < closestDistance then
+					closestDistance = distance
+					closestNormal = normal.Unit
+				end
+			end
+		end
+	end
+
+	if closestNormal then
+		return true, closestNormal
+	end
+
+	return false, nil
+end
+
+local function UpdateWallContact()
+	PreviousWallContact = WallContact
+	WallContact, WallNormal = DetectWall()
+end
+
+local function DetectCeiling()
+	if not Head then
+		return false
+	end
+
+	local params = GetRayParams()
+
+	local offsets = {
+		Vector3.new(0, 0, 0),
+		Vector3.new(0.28, 0, 0),
+		Vector3.new(-0.28, 0, 0)
+	}
+
+	local hits = 0
+
+	for _, offset in ipairs(offsets) do
+		local origin = Head.Position
+			+ Vector3.new(0, HEAD_CHECK_HEIGHT, 0)
+			+ offset
+
+		local result = workspace:Raycast(
+			origin,
+			Vector3.new(0, HEAD_CHECK_DISTANCE, 0),
+			params
+		)
+
+		if result
+			and result.Instance
+			and not result.Instance:IsA("TrussPart")
+			and result.Normal.Y <= HEAD_NORMAL_THRESHOLD then
+			hits += 1
+		end
+	end
+
+	return hits >= 2
+end
+
+local function UpdateCeilingLock()
+	if not CeilingLock or not Root then
+		return
+	end
+
+	local now = os.clock()
+	local touchingCeiling = DetectCeiling()
+	local velocityY = Root.AssemblyLinearVelocity.Y
+
+	if touchingCeiling then
+		CeilingClearSince = 0
+		return
+	end
+
+	if now - CeilingLockStarted < CEILING_LOCK_MIN_TIME then
+		CeilingClearSince = 0
+		return
+	end
+
+	if velocityY > 0.05 then
+		CeilingClearSince = 0
+		return
+	end
+
+	if CeilingClearSince == 0 then
+		CeilingClearSince = now
+		return
+	end
+
+	if now - CeilingClearSince >= CEILING_CLEAR_TIME then
+		CeilingLock = false
+		CeilingLockStarted = 0
+		CeilingClearSince = 0
+	end
+end
+
+local function ResolveCeiling()
+	if not Root or not Humanoid then
+		return false
+	end
+
+	if CeilingLock then
+		UpdateCeilingLock()
+		return true
+	end
+
+	if not CustomJumpActive or not JumpActive then
+		return false
+	end
+
+	if Humanoid:GetState() == Enum.HumanoidStateType.Climbing then
+		return false
+	end
+
+	local velocity = Root.AssemblyLinearVelocity
+
+	if velocity.Y <= 0.05 or not DetectCeiling() then
+		return false
+	end
+
+	CeilingLock = true
+	CeilingLockStarted = os.clock()
+	CeilingClearSince = 0
+
+	JumpActive = false
+	CustomJumpActive = false
+	JumpVelocity = 0
+	JumpFlightTime = 0
+
+	Humanoid.Jump = false
+
+	StopTrack(JumpTrack, 0.1)
+
+	return true
+end
+
+local function BeginTrussJump()
+	if not Humanoid or not Root or CeilingLock then
+		return false
+	end
+
+	JumpActive = false
+	CustomJumpActive = false
+	TrussLaunchActive = true
+
+	JumpVelocity = 0
+	JumpFlightTime = 0
+
+	Humanoid.Jump = true
+
+	StopTrack(ClimbTrack, 0.05)
+
+	JumpAnimationPlayed = false
+	FallAnimationPlayed = false
+	JumpAnimationStart = os.clock()
+
+	if JumpTrack then
+		JumpTrack.TimePosition = 0
+		JumpTrack:Play(0.05, 1, JUMP_ANIMATION_SPEED)
+	end
+
+	return true
+end
+
+local function BeginCustomJump()
+	if not Humanoid or not Root or CeilingLock then
+		return false
+	end
+
+	JumpVelocity = GetJumpVelocity()
+	JumpFlightTime = GetJumpFlightTime()
+	JumpStartTime = os.clock()
+
+	local velocity = Root.AssemblyLinearVelocity
+
+	Root.AssemblyLinearVelocity = Vector3.new(
+		velocity.X,
+		JumpVelocity,
+		velocity.Z
+	)
+
+	JumpActive = true
+	CustomJumpActive = true
+	TrussLaunchActive = false
+
+	JumpAnimationPlayed = false
+	FallAnimationPlayed = false
+
+	PlayJumpAnimation()
+
+	return true
+end
+
+local function StartJump()
+	if not Humanoid or not Root or CeilingLock then
+		return false
+	end
+
+	local now = os.clock()
+
+	if now - LastJumpRequest < JUMP_REQUEST_COOLDOWN then
+		return false
+	end
+
+	local state = Humanoid:GetState()
+	local success
+
+	if state == Enum.HumanoidStateType.Climbing then
+		success = BeginTrussJump()
+	else
+		success = BeginCustomJump()
+	end
+
+	if success then
+		LastJumpRequest = now
+	end
+
+	return success
+end
+
+local function StartWallhop()
+	if not Humanoid or not Root or CeilingLock then
+		return false
+	end
+
+	if not WallContact then
+		return false
+	end
+
+	local now = os.clock()
+
+	if now - LastWallhop < WALLHOP_COOLDOWN then
+		return false
+	end
+
+	local success = BeginCustomJump()
+
+	if success then
+		LastWallhop = now
+		LastJumpRequest = now
+	end
+
+	return success
+end
+
+local function UpdateJumpState()
+	if not JumpActive or not Humanoid or not Root then
+		return
+	end
+
+	if CeilingLock then
+		JumpActive = false
+		CustomJumpActive = false
+		return
+	end
+
+	local now = os.clock()
+	local state = Humanoid:GetState()
+
+    if state == Enum.HumanoidStateType.Climbing then
+		JumpActive = false
+		CustomJumpActive = false
+		JumpVelocity = 0
+		JumpFlightTime = 0
+		return
+	end
+
+	if IsGrounded(state) and now - JumpStartTime > 0.08 then
+		JumpActive = false
+		CustomJumpActive = false
+		JumpVelocity = 0
+		JumpFlightTime = 0
+		return
+	end
+
+	if now - JumpStartTime >= JumpFlightTime then
+		JumpActive = false
+		CustomJumpActive = false
+		JumpVelocity = 0
+		JumpFlightTime = 0
+	end
+end
+
+local function SetupCharacter(newCharacter)
+	Character = newCharacter
+	Humanoid = Character:WaitForChild("Humanoid")
+	Root = Character:WaitForChild("HumanoidRootPart")
+	Head = Character:WaitForChild("Head")
+
+	Animator = Humanoid:FindFirstChildOfClass("Animator")
+
+	if not Animator then
+		Animator = Instance.new("Animator")
+		Animator.Parent = Humanoid
+	end
+
+	InfiniteJump = PersistentInfiniteJump
+
+	LastGrounded = os.clock()
+	LastJumpRequest = 0
+	LastWallhop = 0
+	LastJumpInput = 0
+
+	JumpInputLocked = false
+
+	JumpActive = false
+	CustomJumpActive = false
+	TrussLaunchActive = false
+
+	JumpStartTime = 0
+	JumpVelocity = 0
+	JumpFlightTime = 0
+
+	WallContact = false
+	WallNormal = nil
+	PreviousWallContact = false
+
+	CeilingLock = false
+	CeilingLockStarted = 0
+	CeilingClearSince = 0
+
+	JumpAnimationPlayed = false
+	FallAnimationPlayed = false
+	JumpAnimationStart = os.clock()
+
+	if StateConnection then
+		StateConnection:Disconnect()
+		StateConnection = nil
+	end
+
+	LoadAnimations()
+
+	StateConnection = Humanoid.StateChanged:Connect(function(_, newState)
+		if IsGrounded(newState) then
+			LastGrounded = os.clock()
+
+			JumpActive = false
+			CustomJumpActive = false
+
+			JumpVelocity = 0
+			JumpFlightTime = 0
+
+			JumpAnimationPlayed = false
+			FallAnimationPlayed = false
+
+			StopTrack(JumpTrack, 0.2)
+			StopTrack(FallTrack, 0.2)
+		end
+
+		if newState == Enum.HumanoidStateType.Climbing then
+			TrussLaunchActive = false
+			StopTrack(JumpTrack, 0.1)
+			StopTrack(FallTrack, 0.1)
+		elseif newState == Enum.HumanoidStateType.Freefall
+			or newState == Enum.HumanoidStateType.Jumping then
+			TrussLaunchActive = false
+		end
+	end)
+end
+
+if Player.Character then
+	SetupCharacter(Player.Character)
+end
+
+Player.CharacterAdded:Connect(SetupCharacter)
+
+UserInputService.JumpRequest:Connect(function()
+	if not InfiniteJump or not Humanoid or not Root then
+		return
+	end
+
+	if Humanoid.Health <= 0 or CeilingLock then
+		return
+	end
+
+	local now = os.clock()
+
+	if JumpInputLocked then
+		if now - LastJumpInput < JUMP_INPUT_RELEASE_TIME then
+			return
+		end
+
+		JumpInputLocked = false
+	end
+
+	JumpInputLocked = true
+	LastJumpInput = now
+
+	local state = Humanoid:GetState()
+
+	if state == Enum.HumanoidStateType.Climbing then
+		StartJump()
+		return
+	end
+
+	if IsGrounded(state) or now - LastGrounded <= COYOTE_TIME then
+		StartJump()
+		return
+	end
+
+	if WallContact and not PreviousWallContact then
+		if StartWallhop() then
+			return
+		end
+	end
+
+	StartJump()
+end)
+
+RunService.Heartbeat:Connect(function()
+	if not InfiniteJump then
+		return
+	end
+
+	if not Character or not Humanoid or not Root or Humanoid.Health <= 0 then
+		return
+	end
+
+	local state = Humanoid:GetState()
+
+	if IsGrounded(state) then
+		LastGrounded = os.clock()
+	end
+
+	UpdateWallContact()
+
+	if ResolveCeiling() then
+		UpdateAnimations()
+		return
+	end
+
+	UpdateJumpState()
+	UpdateAnimations()
+end)</code></pre>
+            </div>
+            <button class="copy-btn" onclick="copyScript('script1', this)">📋 Copy Script</button>
+        </div>
+
+        <!-- Script 2 -->
+        <div class="script-card">
+            <div class="card-header">
+                <div class="script-title">Jump Analyzer Pro + TAS Recorder</div>
+                <div class="badge-group">
+                    <span class="badge">v3.0 Ultimate</span>
+                    <span class="badge">Telemetry / TAS</span>
+                </div>
+            </div>
+            <div class="script-desc">
+                Comprehensive physics telemetry tool and TAS (Tool-Assisted Speedrun) recorder. Monitors real-time FPS, live jump buffer logs, position and velocity vectors, frame delay metrics, and includes built-in JSON export functionality.
+            </div>
+            <div class="code-box-container">
+                <pre><code id="script2">-- JUMP ANALYZER PRO + TAS RECORDER v3.0
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+local Config = {
+    Enabled = true,
+    Logging = true,
+    BufferSize = 256,
+    MaxInputFrames = 12,
+    VerticalThreshold = 1.5,
+    MaxRecordedFrames = 30000,
+    UpdateInterval = 0.15,
+    AverageFPSWindow = 30,
+    ShowPosition = true,
+    ShowVelocity = true,
+    ShowAdvancedStats = true
+}
+
+local Stats = {
+    Frames = 0,
+    FPS = 0,
+    AverageFPS = 0,
+    Jumps = 0,
+    Landings = 0,
+    Missed = 0,
+    HorizontalSpeed = 0,
+    VerticalSpeed = 0,
+    Position = Vector3.zero,
+    Velocity = Vector3.zero,
+    LastJumpDelay = 0,
+    LastJumpDuration = 0
+}
+
+local Character = nil
+local Humanoid = nil
+local Root = nil
+local CharacterConnections = {}
+local PreviousPosition = nil
+local PreviousVelocity = nil
+local PendingJump = nil
+local ActiveJump = nil
+local Frame = 0
+local DeltaHistory = {}
+local Buffer = {}
+
+local Recorder = {
+    Enabled = false,
+    Recording = false,
+    Frames = {},
+    StartTime = 0,
+    MaxFrames = 30000
+}
+
+local function Create(class, properties, parent)
+    local object = Instance.new(class)
+    for property, value in pairs(properties) do
+        object[property] = value
+    end
+    object.Parent = parent
+    return object
+end
+
+local function Corner(parent, radius)
+    return Create("UICorner", { CornerRadius = UDim.new(0, radius) }, parent)
+end
+
+local function Animate(object, properties, duration)
+    local tween = TweenService:Create(object, TweenInfo.new(duration or 0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), properties)
+    tween:Play()
+    return tween
+end
+
+local function FormatNumber(number, decimals)
+    return string.format("%." .. tostring(decimals or 2) .. "f", number)
+end
+
+local function DisconnectCharacterConnections()
+    for _, connection in ipairs(CharacterConnections) do
+        connection:Disconnect()
+    end
+    table.clear(CharacterConnections)
+end
+
+local function Log(message, color)
+    print("[JAP] " .. tostring(message))
+    if not Config.Logging then return end
+    table.insert(Buffer, {
+        message = tostring(message),
+        color = color or Color3.fromRGB(190, 205, 225),
+        time = os.date("%H:%M:%S")
+    })
+    while #Buffer > Config.BufferSize do
+        table.remove(Buffer, 1)
+    end
+end
+
+-- GUI Initialization & UI Setup
+local Gui = Create("ScreenGui", { Name = "JumpAnalyzerPro", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 100, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, PlayerGui)
+local Main = Create("Frame", { Name = "Main", Size = UDim2.fromOffset(390, 510), Position = UDim2.new(0.5, -195, 0.5, -255), BackgroundColor3 = Color3.fromRGB(14, 18, 28), BorderSizePixel = 0, ClipsDescendants = true }, Gui)
+Corner(Main, 14)
+Create("UIStroke", { Color = Color3.fromRGB(60, 105, 160), Transparency = 0.35, Thickness = 1 }, Main)
+local Scale = Create("UIScale", { Scale = 1 }, Main)
+
+local Topbar = Create("Frame", { Name = "Topbar", Size = UDim2.new(1, 0, 0, 58), BackgroundColor3 = Color3.fromRGB(23, 31, 47), BorderSizePixel = 0 }, Main)
+Corner(Topbar, 14)
+Create("TextLabel", { Position = UDim2.fromOffset(17, 8), Size = UDim2.new(1, -100, 0, 25), BackgroundTransparency = 1, Text = "JUMP ANALYZER PRO", TextColor3 = Color3.fromRGB(225, 237, 255), TextSize = 16, Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left }, Topbar)
+Create("TextLabel", { Position = UDim2.fromOffset(18, 33), Size = UDim2.new(1, -100, 0, 15), BackgroundTransparency = 1, Text = "PHYSICS MONITOR / TAS v3.0", TextColor3 = Color3.fromRGB(112, 148, 190), TextSize = 9, Font = Enum.Font.GothamMedium, TextXAlignment = Enum.TextXAlignment.Left }, Topbar)
+
+local HideButton = Create("TextButton", { Position = UDim2.new(1, -47, 0, 12), Size = UDim2.fromOffset(34, 34), BackgroundColor3 = Color3.fromRGB(42, 55, 77), Text = "—", TextColor3 = Color3.new(1, 1, 1), TextSize = 20, Font = Enum.Font.GothamBold }, Topbar)
+Corner(HideButton, 8)
+
+local Floating = Create("TextButton", { Name = "FloatingButton", Size = UDim2.fromOffset(54, 45), Position = UDim2.new(0, 15, 0.5, 0), BackgroundColor3 = Color3.fromRGB(25, 40, 62), Text = "JAP", TextColor3 = Color3.fromRGB(105, 185, 255), TextSize = 15, Font = Enum.Font.GothamBold, Visible = false }, Gui)
+Corner(Floating, 12)
+
+HideButton.MouseButton1Click:Connect(function()
+    Main.Visible = false
+    Floating.Visible = true
+end)
+Floating.MouseButton1Click:Connect(function()
+    Floating.Visible = false
+    Main.Visible = true
+end)
+
+local Content = Create("ScrollingFrame", { Name = "Content", Position = UDim2.fromOffset(12, 70), Size = UDim2.new(1, -24, 1, -82), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3, AutomaticCanvasSize = Enum.AutomaticSize.Y }, Main)
+Create("UIPadding", { PaddingBottom = UDim.new(0, 10), PaddingRight = UDim.new(0, 3) }, Content)
+Create("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, Content)
+
+Log("JUMP ANALYZER PRO + TAS INITIALIZED", Color3.fromRGB(100, 210, 160))
+</code></pre>
+            </div>
+            <button class="copy-btn" onclick="copyScript('script2', this)">📋 Copy Script</button>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>Etoh Cheats Hub &copy; 2026. All rights reserved.</p>
+    </footer>
+
+    <div id="notification" class="notification">✨ Script copied to clipboard!</div>
+
+    <script>
+        function copyScript(elementId, btn) {
+            const codeText = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(codeText).then(() => {
+                const notification = document.getElementById('notification');
+                notification.classList.add('show');
+                
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 2500);
+
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
