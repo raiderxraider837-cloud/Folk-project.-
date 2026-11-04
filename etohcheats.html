@@ -2363,7 +2363,1546 @@ Log("JUMP ANALYZER PRO + TAS INITIALIZED")
 Log("PHYSICS TRACKER READY")  
 Log("TAS RECORDER READY")  
 Log("GUI TOGGLE: RIGHT SHIFT / INVISIBLE MOBILE ZONE")  
-  
+ --[[
+    JUMP ANALYZER PRO + TAS RECORDER
+    VERSION 3.0
+    PARTE 1/3
+    Roblox Studio | LocalScript
+]]
+
+-- SERVICES
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+-- CONFIGURATION
+
+local Config = {
+    Enabled = true,
+    Logging = true,
+
+    BufferSize = 256,
+    MaxInputFrames = 12,
+    VerticalThreshold = 1.5,
+    MaxRecordedFrames = 30000,
+
+    UpdateInterval = 0.15,
+    AverageFPSWindow = 30,
+
+    ShowPosition = true,
+    ShowVelocity = true,
+    ShowAdvancedStats = true
+}
+
+-- STATISTICS
+
+local Stats = {
+    Frames = 0,
+    FPS = 0,
+    AverageFPS = 0,
+
+    Jumps = 0,
+    Landings = 0,
+    Missed = 0,
+
+    HorizontalSpeed = 0,
+    VerticalSpeed = 0,
+
+    Position = Vector3.zero,
+    Velocity = Vector3.zero,
+
+    LastJumpDelay = 0,
+    LastJumpDuration = 0
+}
+
+-- CHARACTER DATA
+
+local Character = nil
+local Humanoid = nil
+local Root = nil
+
+local CharacterConnections = {}
+
+local PreviousPosition = nil
+local PreviousVelocity = nil
+
+local PendingJump = nil
+local ActiveJump = nil
+
+local Frame = 0
+local DeltaHistory = {}
+
+-- LOG SYSTEM
+
+local Buffer = {}
+
+-- TAS RECORDER
+
+local Recorder = {
+    Enabled = false,
+    Recording = false,
+
+    Frames = {},
+    StartTime = 0,
+
+    MaxFrames = 30000
+}
+
+-- GUI REFERENCES
+
+local Gui
+local Main
+local Topbar
+local Content
+local LogScroll
+local LogLayout
+
+local Floating
+local HideButton
+
+local FPSLabel
+local FrameLabel
+local JumpLabel
+local LandingLabel
+local MissedLabel
+
+local PositionLabel
+local VelocityLabel
+
+-- UTILITY FUNCTIONS
+
+local function Create(class, properties, parent)
+    local object = Instance.new(class)
+
+    for property, value in pairs(properties) do
+        object[property] = value
+    end
+
+    object.Parent = parent
+
+    return object
+end
+
+local function Corner(parent, radius)
+    return Create("UICorner", {
+        CornerRadius = UDim.new(0, radius)
+    }, parent)
+end
+
+local function Animate(object, properties, duration)
+    local tween = TweenService:Create(
+        object,
+        TweenInfo.new(
+            duration or 0.2,
+            Enum.EasingStyle.Quart,
+            Enum.EasingDirection.Out
+        ),
+        properties
+    )
+
+    tween:Play()
+
+    return tween
+end
+
+local function FormatNumber(number, decimals)
+    return string.format(
+        "%." .. tostring(decimals or 2) .. "f",
+        number
+    )
+end
+
+local function DisconnectCharacterConnections()
+    for _, connection in ipairs(CharacterConnections) do
+        connection:Disconnect()
+    end
+
+    table.clear(CharacterConnections)
+end
+
+-- LOGGING
+
+local function Log(message, color)
+    print("[JAP] " .. tostring(message))
+
+    if not Config.Logging then
+        return
+    end
+
+    table.insert(Buffer, {
+        message = tostring(message),
+
+        color = color or Color3.fromRGB(
+            190, 205, 225
+        ),
+
+        time = os.date("%H:%M:%S")
+    })
+
+    while #Buffer > Config.BufferSize do
+        table.remove(Buffer, 1)
+    end
+end
+
+-- GUI CREATION
+
+Gui = Create("ScreenGui", {
+    Name = "JumpAnalyzerPro",
+    ResetOnSpawn = false,
+    IgnoreGuiInset = true,
+    DisplayOrder = 100,
+    ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+}, PlayerGui)
+
+Main = Create("Frame", {
+    Name = "Main",
+
+    Size = UDim2.fromOffset(390, 510),
+
+    Position = UDim2.new(
+        0.5, -195,
+        0.5, -255
+    ),
+
+    BackgroundColor3 = Color3.fromRGB(
+        14, 18, 28
+    ),
+
+    BorderSizePixel = 0,
+
+    ClipsDescendants = true
+}, Gui)
+
+Corner(Main, 14)
+
+Create("UIStroke", {
+    Color = Color3.fromRGB(60, 105, 160),
+    Transparency = 0.35,
+    Thickness = 1
+}, Main)
+
+local Scale = Create("UIScale", {
+    Scale = 1
+}, Main)
+
+-- TOPBAR
+
+Topbar = Create("Frame", {
+    Name = "Topbar",
+
+    Size = UDim2.new(1, 0, 0, 58),
+
+    BackgroundColor3 = Color3.fromRGB(
+        23, 31, 47
+    ),
+
+    BorderSizePixel = 0
+}, Main)
+
+Corner(Topbar, 14)
+
+Create("TextLabel", {
+    Position = UDim2.fromOffset(17, 8),
+
+    Size = UDim2.new(1, -100, 0, 25),
+
+    BackgroundTransparency = 1,
+
+    Text = "JUMP ANALYZER PRO",
+
+    TextColor3 = Color3.fromRGB(
+        225, 237, 255
+    ),
+
+    TextSize = 16,
+    Font = Enum.Font.GothamBold,
+
+    TextXAlignment = Enum.TextXAlignment.Left
+}, Topbar)
+
+Create("TextLabel", {
+    Position = UDim2.fromOffset(18, 33),
+
+    Size = UDim2.new(1, -100, 0, 15),
+
+    BackgroundTransparency = 1,
+
+    Text = "PHYSICS MONITOR / TAS v3.0",
+
+    TextColor3 = Color3.fromRGB(
+        112, 148, 190
+    ),
+
+    TextSize = 9,
+    Font = Enum.Font.GothamMedium,
+
+    TextXAlignment = Enum.TextXAlignment.Left
+}, Topbar)
+
+HideButton = Create("TextButton", {
+    Position = UDim2.new(1, -47, 0, 12),
+
+    Size = UDim2.fromOffset(34, 34),
+
+    BackgroundColor3 = Color3.fromRGB(
+        42, 55, 77
+    ),
+
+    Text = "—",
+
+    TextColor3 = Color3.new(1, 1, 1),
+
+    TextSize = 20,
+    Font = Enum.Font.GothamBold,
+
+    AutoButtonColor = true
+}, Topbar)
+
+Corner(HideButton, 8)
+
+-- FLOATING BUTTON
+
+Floating = Create("TextButton", {
+    Name = "FloatingButton",
+
+    Size = UDim2.fromOffset(54, 45),
+
+    Position = UDim2.new(
+        0, 15,
+        0.5, 0
+    ),
+
+    BackgroundColor3 = Color3.fromRGB(
+        25, 40, 62
+    ),
+
+    Text = "JAP",
+
+    TextColor3 = Color3.fromRGB(
+        105, 185, 255
+    ),
+
+    TextSize = 15,
+    Font = Enum.Font.GothamBold,
+
+    Visible = false
+}, Gui)
+
+Corner(Floating, 12)
+
+-- HIDE / SHOW
+
+local IsHidden = false
+
+local function HideGUI()
+    if IsHidden then
+        return
+    end
+
+    IsHidden = true
+
+    local tween = Animate(Main, {
+        Size = UDim2.fromOffset(0, 0)
+    }, 0.2)
+
+    tween.Completed:Once(function()
+        if IsHidden then
+            Main.Visible = false
+            Floating.Visible = true
+        end
+    end)
+end
+
+local function ShowGUI()
+    if not IsHidden then
+        return
+    end
+
+    IsHidden = false
+
+    Floating.Visible = false
+    Main.Visible = true
+
+    Main.Size = UDim2.fromOffset(0, 0)
+
+    Animate(Main, {
+        Size = UDim2.fromOffset(390, 510)
+    }, 0.25)
+end
+
+HideButton.MouseButton1Click:Connect(HideGUI)
+Floating.MouseButton1Click:Connect(ShowGUI)
+
+-- DRAG SYSTEM
+
+local Dragging = false
+local DragStart = nil
+local StartPosition = nil
+local DragInput = nil
+
+Topbar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        Dragging = true
+
+        DragStart = input.Position
+        StartPosition = Main.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                Dragging = false
+            end
+        end)
+    end
+end)
+
+Topbar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+
+        DragInput = input
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if not Dragging or not DragStart or not StartPosition then
+        return
+    end
+
+    if input ~= DragInput then
+        return
+    end
+
+    local delta = input.Position - DragStart
+
+    Main.Position = UDim2.new(
+        StartPosition.X.Scale,
+        StartPosition.X.Offset + delta.X,
+
+        StartPosition.Y.Scale,
+        StartPosition.Y.Offset + delta.Y
+    )
+end)
+
+-- MAIN CONTENT
+
+Content = Create("ScrollingFrame", {
+    Name = "Content",
+
+    Position = UDim2.fromOffset(12, 70),
+
+    Size = UDim2.new(1, -24, 1, -82),
+
+    BackgroundTransparency = 1,
+
+    BorderSizePixel = 0,
+
+    ScrollBarThickness = 3,
+
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+
+    CanvasSize = UDim2.fromOffset(0, 0)
+}, Main)
+
+Create("UIPadding", {
+    PaddingBottom = UDim.new(0, 10),
+    PaddingRight = UDim.new(0, 3)
+}, Content)
+
+Create("UIListLayout", {
+    Padding = UDim.new(0, 10),
+    SortOrder = Enum.SortOrder.LayoutOrder
+}, Content)
+
+-- RESPONSIVE SCALING
+
+local function UpdateScale()
+    local camera = workspace.CurrentCamera
+
+    if not camera then
+        return
+    end
+
+    local viewport = camera.ViewportSize
+
+    Scale.Scale = math.clamp(
+        math.min(
+            viewport.X / 650,
+            viewport.Y / 600
+        ),
+        0.65,
+        1
+    )
+end
+
+local function ConnectCamera(camera)
+    if not camera then
+        return
+    end
+
+    camera:GetPropertyChangedSignal(
+        "ViewportSize"
+    ):Connect(UpdateScale)
+
+    UpdateScale()
+end
+
+workspace:GetPropertyChangedSignal(
+    "CurrentCamera"
+):Connect(function()
+    ConnectCamera(workspace.CurrentCamera)
+end)
+
+ConnectCamera(workspace.CurrentCamera)
+
+-- END OF PART 1
+-- DO NOT RUN UNTIL ALL PARTS ARE ADDED
+--[[
+    JUMP ANALYZER PRO + TAS RECORDER
+    PARTE 2/3
+    GUI CONTROLS + STATISTICS + LOGS + EXPORT
+]]
+
+-- UI SECTIONS
+
+local function Section(name)
+    return Create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 24),
+
+        BackgroundTransparency = 1,
+
+        Text = name,
+
+        TextColor3 = Color3.fromRGB(
+            110, 175, 240
+        ),
+
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
+
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, Content)
+end
+
+-- STAT CARDS
+
+local function StatCard(name)
+    local card = Create("Frame", {
+        Size = UDim2.new(1, 0, 0, 62),
+
+        BackgroundColor3 = Color3.fromRGB(
+            24, 32, 47
+        ),
+
+        BorderSizePixel = 0
+    }, Content)
+
+    Corner(card, 9)
+
+    Create("TextLabel", {
+        Position = UDim2.fromOffset(12, 7),
+
+        Size = UDim2.new(1, -24, 0, 17),
+
+        BackgroundTransparency = 1,
+
+        Text = name,
+
+        TextColor3 = Color3.fromRGB(
+            145, 165, 190
+        ),
+
+        TextSize = 11,
+        Font = Enum.Font.GothamMedium,
+
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, card)
+
+    return Create("TextLabel", {
+        Position = UDim2.fromOffset(12, 25),
+
+        Size = UDim2.new(1, -24, 0, 30),
+
+        BackgroundTransparency = 1,
+
+        Text = "0",
+
+        TextColor3 = Color3.fromRGB(
+            225, 238, 255
+        ),
+
+        TextSize = 21,
+        Font = Enum.Font.GothamBold,
+
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, card)
+end
+
+-- PERFORMANCE
+
+Section("PERFORMANCE")
+
+FPSLabel = StatCard("CURRENT FPS")
+FrameLabel = StatCard("TOTAL HEARTBEATS")
+JumpLabel = StatCard("REGISTERED JUMPS")
+LandingLabel = StatCard("LANDINGS")
+MissedLabel = StatCard("MISSED INPUTS")
+
+Section("MOVEMENT ANALYSIS")
+
+PositionLabel = StatCard("POSITION X / Y / Z")
+VelocityLabel = StatCard("VELOCITY X / Y / Z")
+
+-- TOGGLE SYSTEM
+
+local ToggleStates = {}
+
+local function ToggleButton(name, initial, callback)
+    local button = Create("TextButton", {
+        Size = UDim2.new(1, 0, 0, 39),
+
+        BackgroundColor3 = Color3.fromRGB(
+            28, 40, 59
+        ),
+
+        Text = "",
+        AutoButtonColor = false
+    }, Content)
+
+    Corner(button, 8)
+
+    Create("TextLabel", {
+        Position = UDim2.fromOffset(12, 0),
+
+        Size = UDim2.new(0.7, 0, 1, 0),
+
+        BackgroundTransparency = 1,
+
+        Text = name,
+
+        TextColor3 = Color3.fromRGB(
+            215, 225, 240
+        ),
+
+        TextSize = 12,
+        Font = Enum.Font.GothamMedium,
+
+        TextXAlignment = Enum.TextXAlignment.Left
+    }, button)
+
+    local enabled = initial
+
+    local status = Create("TextLabel", {
+        Position = UDim2.new(1, -75, 0, 7),
+
+        Size = UDim2.fromOffset(62, 25),
+
+        BackgroundColor3 = enabled
+            and Color3.fromRGB(35, 110, 80)
+            or Color3.fromRGB(85, 50, 55),
+
+        Text = enabled and "ON" or "OFF",
+
+        TextColor3 = Color3.new(1, 1, 1),
+
+        TextSize = 10,
+        Font = Enum.Font.GothamBold
+    }, button)
+
+    Corner(status, 6)
+
+    ToggleStates[name] = enabled
+
+    button.MouseButton1Click:Connect(function()
+        enabled = not enabled
+
+        ToggleStates[name] = enabled
+
+        status.Text = enabled and "ON" or "OFF"
+
+        Animate(status, {
+            BackgroundColor3 = enabled
+                and Color3.fromRGB(35, 110, 80)
+                or Color3.fromRGB(85, 50, 55)
+        })
+
+        callback(enabled)
+    end)
+
+    return button
+end
+
+Section("SYSTEM CONTROL")
+
+ToggleButton("Analyzer enabled", Config.Enabled, function(value)
+    Config.Enabled = value
+
+    Log(
+        "ANALYZER " .. (value and "ENABLED" or "DISABLED")
+    )
+end)
+
+ToggleButton("Console logging", Config.Logging, function(value)
+    Config.Logging = value
+
+    if value then
+        Log("CONSOLE LOGGING ENABLED")
+    end
+end)
+
+ToggleButton("Position display", Config.ShowPosition, function(value)
+    Config.ShowPosition = value
+
+    PositionLabel.Parent.Visible = true
+    PositionLabel.Visible = value
+end)
+
+ToggleButton("Velocity display", Config.ShowVelocity, function(value)
+    Config.ShowVelocity = value
+
+    VelocityLabel.Visible = value
+end)
+
+ToggleButton("Advanced statistics", Config.ShowAdvancedStats, function(value)
+    Config.ShowAdvancedStats = value
+
+    PositionLabel.Visible = value and Config.ShowPosition
+    VelocityLabel.Visible = value and Config.ShowVelocity
+end)
+
+ToggleButton("TAS Recorder", Recorder.Enabled, function(value)
+    Recorder.Enabled = value
+
+    if value then
+        table.clear(Recorder.Frames)
+
+        Recorder.Recording = true
+        Recorder.StartTime = os.clock()
+
+        Log("TAS RECORDING STARTED")
+    else
+        Recorder.Recording = false
+
+        Log("TAS RECORDING STOPPED")
+    end
+end)
+
+-- BUFFER CONFIGURATION
+
+Section("BUFFER CONFIGURATION")
+
+local BufferInput = Create("TextBox", {
+    Size = UDim2.new(1, 0, 0, 40),
+
+    BackgroundColor3 = Color3.fromRGB(
+        24, 32, 47
+    ),
+
+    Text = tostring(Config.BufferSize),
+
+    TextColor3 = Color3.new(1, 1, 1),
+
+    TextSize = 13,
+    Font = Enum.Font.Gotham,
+
+    ClearTextOnFocus = false,
+
+    PlaceholderText = "Buffer size"
+}, Content)
+
+Corner(BufferInput, 8)
+
+local ApplyBuffer = Create("TextButton", {
+    Size = UDim2.new(1, 0, 0, 38),
+
+    BackgroundColor3 = Color3.fromRGB(
+        40, 105, 170
+    ),
+
+    Text = "APPLY BUFFER",
+
+    TextColor3 = Color3.new(1, 1, 1),
+
+    TextSize = 12,
+    Font = Enum.Font.GothamBold
+}, Content)
+
+Corner(ApplyBuffer, 8)
+
+ApplyBuffer.MouseButton1Click:Connect(function()
+    local value = tonumber(BufferInput.Text)
+
+    if not value then
+        Log("INVALID BUFFER VALUE", Color3.fromRGB(255, 100, 100))
+        return
+    end
+
+    Config.BufferSize = math.clamp(
+        math.floor(value),
+        16,
+        5000
+    )
+
+    while #Buffer > Config.BufferSize do
+        table.remove(Buffer, 1)
+    end
+
+    Log("BUFFER UPDATED: " .. Config.BufferSize)
+end)
+
+-- TAS MAXIMUM FRAMES
+
+Section("TAS CONFIGURATION")
+
+local MaxFramesInput = Create("TextBox", {
+    Size = UDim2.new(1, 0, 0, 40),
+
+    BackgroundColor3 = Color3.fromRGB(
+        24, 32, 47
+    ),
+
+    Text = tostring(Config.MaxRecordedFrames),
+
+    TextColor3 = Color3.new(1, 1, 1),
+
+    TextSize = 13,
+    Font = Enum.Font.Gotham,
+
+    ClearTextOnFocus = false,
+
+    PlaceholderText = "Maximum recorded frames"
+}, Content)
+
+Corner(MaxFramesInput, 8)
+
+local ApplyFrames = Create("TextButton", {
+    Size = UDim2.new(1, 0, 0, 38),
+
+    BackgroundColor3 = Color3.fromRGB(
+        40, 105, 170
+    ),
+
+    Text = "APPLY TAS LIMIT",
+
+    TextColor3 = Color3.new(1, 1, 1),
+
+    TextSize = 12,
+    Font = Enum.Font.GothamBold
+}, Content)
+
+Corner(ApplyFrames, 8)
+
+ApplyFrames.MouseButton1Click:Connect(function()
+    local value = tonumber(MaxFramesInput.Text)
+
+    if not value then
+        Log("INVALID TAS LIMIT", Color3.fromRGB(255, 100, 100))
+        return
+    end
+
+    Config.MaxRecordedFrames = math.clamp(
+        math.floor(value),
+        100,
+        100000
+    )
+
+    Recorder.MaxFrames = Config.MaxRecordedFrames
+
+    Log("TAS LIMIT UPDATED: " .. Config.MaxRecordedFrames)
+end)
+
+-- EVENT LOGS
+
+Section("LIVE EVENT LOGS")
+
+local LogContainer = Create("Frame", {
+    Size = UDim2.new(1, 0, 0, 180),
+
+    BackgroundColor3 = Color3.fromRGB(
+        9, 13, 21
+    ),
+
+    BorderSizePixel = 0
+}, Content)
+
+Corner(LogContainer, 9)
+
+LogScroll = Create("ScrollingFrame", {
+    Position = UDim2.fromOffset(8, 8),
+
+    Size = UDim2.new(1, -16, 1, -16),
+
+    BackgroundTransparency = 1,
+
+    BorderSizePixel = 0,
+
+    ScrollBarThickness = 3,
+
+    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+
+    CanvasSize = UDim2.fromOffset(0, 0)
+}, LogContainer)
+
+LogLayout = Create("UIListLayout", {
+    Padding = UDim.new(0, 5),
+    SortOrder = Enum.SortOrder.LayoutOrder
+}, LogScroll)
+
+local function RefreshLogs()
+    for _, child in ipairs(LogScroll:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
+
+    for _, entry in ipairs(Buffer) do
+        Create("TextLabel", {
+            Size = UDim2.new(1, -5, 0, 18),
+
+            BackgroundTransparency = 1,
+
+            Text = "[" .. entry.time .. "] " .. entry.message,
+
+            TextColor3 = entry.color,
+
+            TextSize = 10,
+            Font = Enum.Font.Code,
+
+            TextXAlignment = Enum.TextXAlignment.Left,
+
+            TextTruncate = Enum.TextTruncate.AtEnd
+        }, LogScroll)
+    end
+
+    LogScroll.CanvasPosition = Vector2.new(
+        0,
+        math.max(0, LogLayout.AbsoluteContentSize.Y)
+    )
+end
+
+local ClearButton = Create("TextButton", {
+    Size = UDim2.new(1, 0, 0, 36),
+
+    BackgroundColor3 = Color3.fromRGB(
+        115, 48, 58
+    ),
+
+    Text = "CLEAR LOGS",
+
+    TextColor3 = Color3.new(1, 1, 1),
+
+    TextSize = 11,
+    Font = Enum.Font.GothamBold
+}, Content)
+
+Corner(ClearButton, 8)
+
+ClearButton.MouseButton1Click:Connect(function()
+    table.clear(Buffer)
+    RefreshLogs()
+end)
+
+-- TAS EXPORT
+
+Section("TAS DATA EXPORT")
+
+local ExportOutput = Create("TextBox", {
+    Size = UDim2.new(1, 0, 0, 120),
+
+    BackgroundColor3 = Color3.fromRGB(
+        9, 13, 21
+    ),
+
+    Text = "",
+
+    PlaceholderText = "Exported TAS JSON appears here",
+
+    TextColor3 = Color3.fromRGB(180, 220, 255),
+
+    PlaceholderColor3 = Color3.fromRGB(100, 120, 145),
+
+    TextSize = 10,
+    Font = Enum.Font.Code,
+
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Top,
+
+    TextWrapped = false,
+    ClearTextOnFocus = false,
+
+    MultiLine = true
+}, Content)
+
+Corner(ExportOutput, 8)
+
+local ExportButton = Create("TextButton", {
+    Size = UDim2.new(1, 0, 0, 38),
+
+    BackgroundColor3 = Color3.fromRGB(
+        40, 105, 170
+    ),
+
+    Text = "GENERATE TAS JSON",
+
+    TextColor3 = Color3.new(1, 1, 1),
+
+    TextSize = 12,
+    Font = Enum.Font.GothamBold
+}, Content)
+
+Corner(ExportButton, 8)
+
+local function ExportRecording()
+    local success, result = pcall(function()
+        return HttpService:JSONEncode({
+            version = 2,
+            type = "JAP_TAS",
+
+            frameCount = #Recorder.Frames,
+
+            frames = Recorder.Frames
+        })
+    end)
+
+    if not success then
+        Log("EXPORT ERROR: " .. tostring(result))
+        return nil
+    end
+
+    return result
+end
+
+ExportButton.MouseButton1Click:Connect(function()
+    local data = ExportRecording()
+
+    if data then
+        ExportOutput.Text = data
+
+        Log(
+            "TAS JSON GENERATED: " .. #Recorder.Frames .. " FRAMES",
+            Color3.fromRGB(100, 210, 160)
+        )
+    end
+end)
+
+--[[
+    JUMP ANALYZER PRO + TAS RECORDER
+    VERSION 3.2
+    PARTE 3/3
+    Roblox Studio | LocalScript
+]]
+
+-- SERVICES AND STATE
+
+local GuiService = game:GetService("GuiService")
+
+local Dragging = false
+local DragStart = nil
+local StartPosition = nil
+local DragInput = nil
+
+local ReopenButton
+local ReopenVisible = false
+local ReopenButtonVisible = false
+
+local Connections = {}
+
+-- REOPEN BUTTON
+
+ReopenButton = Instance.new("TextButton")
+ReopenButton.Name = "JAP_Reopen"
+ReopenButton.Size = UDim2.fromOffset(30, 30)
+ReopenButton.AnchorPoint = Vector2.new(0.5, 0.5)
+ReopenButton.Position = UDim2.new(
+    Main.Position.X.Scale,
+    Main.Position.X.Offset + Main.Size.X.Offset / 2,
+    Main.Position.Y.Scale,
+    Main.Position.Y.Offset + Main.Size.Y.Offset / 2
+)
+
+ReopenButton.BackgroundColor3 = Color3.fromRGB(35, 48, 68)
+ReopenButton.BackgroundTransparency = 1
+ReopenButton.Text = ""
+ReopenButton.TextTransparency = 1
+ReopenButton.AutoButtonColor = false
+ReopenButton.Visible = false
+ReopenButton.Active = true
+ReopenButton.ZIndex = 200
+ReopenButton.Parent = Gui
+
+Corner(ReopenButton, 15)
+
+local function UpdateReopenPosition()
+    ReopenButton.Position = UDim2.new(
+        Main.Position.X.Scale,
+        Main.Position.X.Offset + Main.AbsoluteSize.X / 2,
+        Main.Position.Y.Scale,
+        Main.Position.Y.Offset + Main.AbsoluteSize.Y / 2
+    )
+end
+
+-- VISIBILITY CONFIGURATION
+
+local function SetReopenButtonVisible(value)
+    ReopenButtonVisible = value
+
+    if value then
+        ReopenButton.BackgroundTransparency = 0
+        ReopenButton.Text = "J"
+        ReopenButton.TextTransparency = 0
+        ReopenButton.BackgroundColor3 = Color3.fromRGB(40, 110, 180)
+    else
+        ReopenButton.BackgroundTransparency = 1
+        ReopenButton.Text = ""
+        ReopenButton.TextTransparency = 1
+    end
+end
+
+local function HideAnalyzer()
+    if IsHidden then
+        return
+    end
+
+    IsHidden = true
+
+    UpdateReopenPosition()
+
+    Main.Visible = false
+    Floating.Visible = false
+
+    ReopenButton.Visible = true
+
+    Log("GUI HIDDEN")
+end
+
+local function ShowAnalyzer()
+    if not IsHidden then
+        return
+    end
+
+    IsHidden = false
+
+    ReopenButton.Visible = false
+
+    Main.Visible = true
+
+    Log("GUI VISIBLE")
+end
+
+HideButton.MouseButton1Click:Connect(HideAnalyzer)
+
+ReopenButton.Activated:Connect(function()
+    ShowAnalyzer()
+end)
+
+-- REOPEN BUTTON SETTING
+
+local VisibilityButton = Instance.new("TextButton")
+VisibilityButton.Name = "ReopenVisibility"
+VisibilityButton.Size = UDim2.new(1, 0, 0, 38)
+VisibilityButton.BackgroundColor3 = Color3.fromRGB(28, 40, 59)
+VisibilityButton.Text = "REOPEN BUTTON: INVISIBLE"
+VisibilityButton.TextColor3 = Color3.new(1, 1, 1)
+VisibilityButton.TextSize = 11
+VisibilityButton.Font = Enum.Font.GothamBold
+VisibilityButton.Parent = Content
+
+Corner(VisibilityButton, 8)
+
+VisibilityButton.Activated:Connect(function()
+    ReopenButtonVisible = not ReopenButtonVisible
+
+    SetReopenButtonVisible(ReopenButtonVisible)
+
+    VisibilityButton.Text = ReopenButtonVisible
+        and "REOPEN BUTTON: VISIBLE"
+        or "REOPEN BUTTON: INVISIBLE"
+
+    Log("REOPEN BUTTON " .. (
+        ReopenButtonVisible and "VISIBLE" or "INVISIBLE"
+    ))
+end)
+
+-- SIDE DRAG HANDLES
+
+local function CreateDragHandle(name, position, size)
+    local handle = Instance.new("TextButton")
+
+    handle.Name = name
+    handle.Position = position
+    handle.Size = size
+
+    handle.BackgroundTransparency = 1
+    handle.Text = ""
+    handle.AutoButtonColor = false
+
+    handle.Active = true
+    handle.ZIndex = 150
+
+    handle.Parent = Main
+
+    return handle
+end
+
+local LeftDrag = CreateDragHandle(
+    "LeftDragHandle",
+    UDim2.new(0, 0, 0, 58),
+    UDim2.new(0, 18, 1, -58)
+)
+
+local RightDrag = CreateDragHandle(
+    "RightDragHandle",
+    UDim2.new(1, -18, 0, 58),
+    UDim2.new(0, 18, 1, -58)
+)
+
+local function BeginDrag(input)
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1
+        and input.UserInputType ~= Enum.UserInputType.Touch then
+        return
+    end
+
+    Dragging = true
+    DragStart = input.Position
+    StartPosition = Main.Position
+
+    input.Changed:Connect(function()
+        if input.UserInputState == Enum.UserInputState.End then
+            Dragging = false
+        end
+    end)
+end
+
+LeftDrag.InputBegan:Connect(BeginDrag)
+RightDrag.InputBegan:Connect(BeginDrag)
+
+LeftDrag.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+        DragInput = input
+    end
+end)
+
+RightDrag.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+        DragInput = input
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if not Dragging or not DragStart or not StartPosition then
+        return
+    end
+
+    if input ~= DragInput then
+        return
+    end
+
+    local delta = input.Position - DragStart
+
+    Main.Position = UDim2.new(
+        StartPosition.X.Scale,
+        StartPosition.X.Offset + delta.X,
+        StartPosition.Y.Scale,
+        StartPosition.Y.Offset + delta.Y
+    )
+
+    UpdateReopenPosition()
+end)
+
+-- JUMP DETECTION
+
+local function IsGrounded()
+    return Humanoid
+        and Humanoid.FloorMaterial ~= Enum.Material.Air
+end
+
+local function RecordFrame(deltaTime)
+    if not Recorder.Enabled or not Recorder.Recording then
+        return
+    end
+
+    if #Recorder.Frames >= Config.MaxRecordedFrames then
+        Recorder.Recording = false
+        Recorder.Enabled = false
+
+        Log("TAS RECORDING LIMIT REACHED")
+        return
+    end
+
+    if not Root then
+        return
+    end
+
+    local position = Root.Position
+    local velocity = Root.AssemblyLinearVelocity
+
+    table.insert(Recorder.Frames, {
+        t = os.clock() - Recorder.StartTime,
+        dt = deltaTime,
+
+        p = {
+            position.X,
+            position.Y,
+            position.Z
+        },
+
+        v = {
+            velocity.X,
+            velocity.Y,
+            velocity.Z
+        },
+
+        grounded = IsGrounded()
+    })
+end
+
+local function StartJump()
+    if not PendingJump or not Root or not Humanoid then
+        return
+    end
+
+    local velocity = Root.AssemblyLinearVelocity
+
+    ActiveJump = {
+        startTime = os.clock(),
+        startFrame = Frame,
+        startPosition = Root.Position,
+        startVelocity = velocity
+    }
+
+    Stats.Jumps += 1
+
+    Stats.LastJumpDelay = os.clock() - PendingJump.time
+
+    Log(
+        "JUMP DETECTED | VY: "
+        .. FormatNumber(velocity.Y)
+    )
+
+    PendingJump = nil
+end
+
+local function FinishJump()
+    if not ActiveJump then
+        return
+    end
+
+    Stats.Landings += 1
+
+    Stats.LastJumpDuration =
+        os.clock() - ActiveJump.startTime
+
+    Log(
+        "LANDING | DURATION: "
+        .. FormatNumber(Stats.LastJumpDuration)
+        .. "s"
+    )
+
+    ActiveJump = nil
+end
+
+-- CHARACTER SETUP
+
+local function SetupCharacter(character)
+    DisconnectCharacterConnections()
+
+    Character = character
+    Humanoid = character:WaitForChild("Humanoid")
+    Root = character:WaitForChild("HumanoidRootPart")
+
+    PreviousPosition = Root.Position
+    PreviousVelocity = Root.AssemblyLinearVelocity
+
+    PendingJump = nil
+    ActiveJump = nil
+
+    table.insert(CharacterConnections,
+        Humanoid.StateChanged:Connect(function(_, newState)
+            if newState == Enum.HumanoidStateType.Landed
+                or newState == Enum.HumanoidStateType.Running then
+
+                if ActiveJump then
+                    FinishJump()
+                end
+            end
+        end)
+    )
+
+    table.insert(CharacterConnections,
+        Humanoid.Died:Connect(function()
+            PendingJump = nil
+            ActiveJump = nil
+        end)
+    )
+
+    Log("CHARACTER INITIALIZED")
+end
+
+Player.CharacterAdded:Connect(SetupCharacter)
+
+if Player.Character then
+    task.spawn(SetupCharacter, Player.Character)
+end
+
+-- INPUT TRACKING
+
+UIS.JumpRequest:Connect(function()
+    if not Config.Enabled then
+        return
+    end
+
+    if not Humanoid or not Root then
+        return
+    end
+
+    if not IsGrounded() then
+        Stats.Missed += 1
+        Log("JUMP INPUT WHILE AIRBORNE")
+        return
+    end
+
+    PendingJump = {
+        time = os.clock(),
+        frame = Frame
+    }
+end)
+
+-- HEARTBEAT ANALYSIS
+
+RunService.Heartbeat:Connect(function(dt)
+    Frame += 1
+    Stats.Frames = Frame
+
+    Stats.FPS = dt > 0 and 1 / dt or 0
+
+    table.insert(DeltaHistory, Stats.FPS)
+
+    while #DeltaHistory > Config.AverageFPSWindow do
+        table.remove(DeltaHistory, 1)
+    end
+
+    local total = 0
+
+    for _, value in ipairs(DeltaHistory) do
+        total += value
+    end
+
+    Stats.AverageFPS = #DeltaHistory > 0
+        and total / #DeltaHistory
+        or 0
+
+    if not Config.Enabled or not Root or not Humanoid then
+        RecordFrame(dt)
+        return
+    end
+
+    local position = Root.Position
+    local velocity = Root.AssemblyLinearVelocity
+
+    Stats.Position = position
+    Stats.Velocity = velocity
+
+    Stats.HorizontalSpeed = Vector3.new(
+        velocity.X,
+        0,
+        velocity.Z
+    ).Magnitude
+
+    Stats.VerticalSpeed = velocity.Y
+
+    if PendingJump then
+        local elapsed = os.clock() - PendingJump.time
+
+        if elapsed > Config.MaxInputFrames * dt then
+            PendingJump = nil
+            Stats.Missed += 1
+
+            Log("JUMP INPUT MISSED")
+        elseif velocity.Y > Config.VerticalThreshold
+            and Humanoid.FloorMaterial == Enum.Material.Air then
+
+            StartJump()
+        end
+    end
+
+    if ActiveJump and IsGrounded() then
+        FinishJump()
+    end
+
+    RecordFrame(dt)
+
+    PreviousPosition = position
+    PreviousVelocity = velocity
+end)
+
+-- LIVE UI UPDATE
+
+local LastUpdate = 0
+
+RunService.RenderStepped:Connect(function()
+    if os.clock() - LastUpdate < Config.UpdateInterval then
+        return
+    end
+
+    LastUpdate = os.clock()
+
+    FPSLabel.Text = FormatNumber(Stats.FPS, 1)
+    FrameLabel.Text = tostring(Stats.Frames)
+
+    JumpLabel.Text = tostring(Stats.Jumps)
+    LandingLabel.Text = tostring(Stats.Landings)
+    MissedLabel.Text = tostring(Stats.Missed)
+
+    if Config.ShowPosition and Config.ShowAdvancedStats then
+        local p = Stats.Position
+
+        PositionLabel.Text = string.format(
+            "%.2f / %.2f / %.2f",
+            p.X, p.Y, p.Z
+        )
+    end
+
+    if Config.ShowVelocity and Config.ShowAdvancedStats then
+        local v = Stats.Velocity
+
+        VelocityLabel.Text = string.format(
+            "%.2f / %.2f / %.2f",
+            v.X, v.Y, v.Z
+        )
+    end
+
+    if not IsHidden then
+        RefreshLogs()
+    end
+end)
+
+-- RESPONSIVE REOPEN POSITION
+
+Main:GetPropertyChangedSignal("Position"):Connect(function()
+    if IsHidden then
+        UpdateReopenPosition()
+    end
+end)
+
+-- INITIALIZATION
+
+SetReopenButtonVisible(false)
+
+Log("JUMP ANALYZER PRO v3.2 INITIALIZED")
+Log("SIDE DRAG ENABLED")
+Log("HIDDEN REOPEN BUTTON READY")
+
+print("[JAP] VERSION 3.2 READY")
+ 
 -- SCRIPT COMPLETE</code></pre>  </div>  
             </div>  
         </div>  
@@ -2382,6 +3921,7 @@ Log("GUI TOGGLE: RIGHT SHIFT / INVISIBLE MOBILE ZONE")
         <p class="text-gray-500">Desarrollado para la comunidad de física y parkour de Roblox.</p>  
     </div>  
 </footer>  
+
 
 <!-- JavaScript Interactivity -->  
 <script>  
